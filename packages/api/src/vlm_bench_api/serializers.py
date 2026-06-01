@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
+from vlm_bench.results import load_run_results
 from vlm_bench.storage.models import InferenceRecord, MetricResult, Run
 
 
@@ -55,6 +57,11 @@ def run_results_payload(run: Run, metrics: list[MetricResult]) -> dict:
         "metrics": [metric_to_dict(m) for m in metrics],
         "aggregates": {"by_model": by_model},
     }
+
+
+def run_results_from_db(db_path: str | Path, run_id: str) -> dict:
+    dto = load_run_results(db_path, run_id)
+    return run_results_payload(dto.run, dto.metrics)
 
 
 def run_detail_payload(

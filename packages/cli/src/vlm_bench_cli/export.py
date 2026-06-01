@@ -5,10 +5,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from jinja2 import Template
+from jinja2 import Environment, Template
 
-from vlm_bench.storage.db import session_scope
-from vlm_bench.storage.models import MetricResult, Run
+from vlm_bench.results import load_run_results
 
 REPORT_TEMPLATE = """<!DOCTYPE html>
 <html lang="en">
@@ -59,13 +58,10 @@ REPORT_TEMPLATE = """<!DOCTYPE html>
 
 
 def render_html_report(run_id: str, db_path: str | Path) -> str:
-    with session_scope(db_path) as session:
-        run = session.get(Run, run_id)
-        if not run:
-            raise ValueError(f"Run not found: {run_id}")
-        raw_agg = json.loads(run.aggregates_json or "{}")
-        by_model = raw_agg.get("by_model", raw_agg)
-        metrics = session.query(MetricResult).filter_by(run_id=run_id).all()
+    dto = load_run_results(db_path, run_id)
+    run = dto.run
+    by_model = dto.aggregates.get("by_model", {})
+    metrics = dto.metrics
 
     leaderboard = []
     for model_id, agg in by_model.items():
@@ -81,7 +77,8 @@ def render_html_report(run_id: str, db_path: str | Path) -> str:
         )
     leaderboard.sort(key=lambda x: x["score"], reverse=True)
 
-    tmpl = Template(REPORT_TEMPLATE)
+    env = Environment(autoescape=True)
+    tmpl = env.from_string(REPORT_TEMPLATE)
     return tmpl.render(
         run_id=run_id,
         name=run.name,
