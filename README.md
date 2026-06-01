@@ -126,6 +126,8 @@ cd packages/web && npm ci && npm run build
 
 CI runs on push: pytest, config validation, web build, and API Docker image build.
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for workflow and PR guidelines.
+
 ## Security
 
 - The API has **no authentication**. Use `127.0.0.1` for local development; do not expose on untrusted networks without a reverse proxy.
