@@ -22,6 +22,7 @@ from vlm_bench.config import BenchmarkConfig
 from vlm_bench.paths import resolve_paths
 from vlm_bench.run_service import create_pending_run
 from vlm_bench.orchestrator import BenchmarkOrchestrator
+from vlm_bench.run_checks import check_fail_under
 from vlm_bench.storage.db import init_db, session_scope
 from vlm_bench.storage.models import InferenceRecord, MetricResult, Project, Run
 from vlm_bench.validation import validate_config
@@ -229,7 +230,20 @@ async def _execute_run(
     )
     ACTIVE_ORCHESTRATORS[run_id] = orch
     try:
-        await orch.run(run_id=run_id, on_progress=on_progress)
+        result = await orch.run(run_id=run_id, on_progress=on_progress)
+        passed, best, threshold = check_fail_under(config, result.get("aggregates", {}))
+        if not passed and threshold is not None:
+            events.append(
+                {
+                    "type": "fail_under",
+                    "best_score": best,
+                    "threshold": threshold,
+                }
+            )
+            with session_scope(DB_PATH) as session:
+                run = session.get(Run, run_id)
+                if run:
+                    run.status = "failed"
     except Exception as e:
         events.append({"type": "error", "message": str(e)})
         with session_scope(DB_PATH) as session:

@@ -15,6 +15,7 @@ from rich.table import Table
 
 from vlm_bench.config import load_config
 from vlm_bench.orchestrator import BenchmarkOrchestrator
+from vlm_bench.run_checks import check_fail_under
 from vlm_bench.storage.db import init_db, session_scope
 from vlm_bench.storage.models import MetricResult, Run
 from vlm_bench.validation import validate_config
@@ -83,13 +84,11 @@ def run(
     run_id = result["run_id"]
     console.print(f"[green]✓[/green] Run complete: {run_id}")
 
-    threshold = fail_under if fail_under is not None else cfg.fail_under
+    if fail_under is not None:
+        cfg = cfg.model_copy(update={"fail_under": fail_under})
+    passed, best, threshold = check_fail_under(cfg, result.get("aggregates", {}))
     if threshold is not None:
-        aggs = result.get("aggregates", {})
-        by_model = aggs.get("by_model", aggs)
-        scores = [a.get("primary_score", 0) for a in by_model.values()]
-        best = max(scores) if scores else 0.0
-        if best < threshold:
+        if not passed:
             console.print(f"[red]✗[/red] Best score {best:.4f} below threshold {threshold}")
             raise typer.Exit(1)
         console.print(f"[green]✓[/green] Best score {best:.4f} meets threshold {threshold}")
