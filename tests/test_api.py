@@ -69,6 +69,14 @@ def test_post_runs_through_completion(api_client):
     assert "aggregates" in body
 
 
+def test_thumbnail_jail(api_client):
+    resp = api_client.get("/thumbnails/../../../etc/passwd")
+    assert resp.status_code == 404
+
+    resp = api_client.get("/thumbnails/fixtures/images/img_001.png")
+    assert resp.status_code == 200
+
+
 def test_validate_config(api_client):
     resp = api_client.post("/validate", json={
         "name": "test",

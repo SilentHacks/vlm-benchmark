@@ -239,12 +239,23 @@ async def run_events(run_id: str):
     return EventSourceResponse(event_generator())
 
 
+def _resolve_under_root(path: Path) -> Path:
+    root = ROOT.resolve()
+    resolved = path.resolve() if path.is_absolute() else (root / path).resolve()
+    if not resolved.is_relative_to(root):
+        raise HTTPException(404, "Image not found")
+    return resolved
+
+
 @app.get("/thumbnails/{image_path:path}")
 def serve_thumbnail(image_path: str) -> FileResponse:
-    path = Path(image_path)
-    if not path.is_absolute():
-        path = ROOT / path
-    if not path.exists():
+    try:
+        path = _resolve_under_root(Path(image_path))
+    except HTTPException:
+        raise
+    except (OSError, ValueError):
+        raise HTTPException(404, "Image not found") from None
+    if not path.exists() or not path.is_file():
         raise HTTPException(404, "Image not found")
     return FileResponse(path)
 
