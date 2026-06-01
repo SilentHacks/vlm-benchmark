@@ -1,0 +1,3 @@
+{"image_id": "img_001", "path": "images/img_001.png", "expected_class": "defect"}
+{"image_id": "img_002", "path": "images/img_002.png", "expected_class": "ok"}
+{"image_id": "img_003", "path": "images/img_003.png", "expected_class": "defect"}
