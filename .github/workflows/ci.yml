@@ -26,6 +26,9 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-packages
 
+      - name: Validate example config
+        run: uv run vlm-bench validate -c configs/example-bench.yaml
+
       - name: Run pytest
         run: uv run pytest -v
 
