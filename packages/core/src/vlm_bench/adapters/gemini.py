@@ -3,19 +3,14 @@
 from __future__ import annotations
 
 import base64
-import os
-import time
-
-import httpx
 
 from vlm_bench.adapters.base import InferenceResult
+from vlm_bench.adapters.http_base import VisionHttpAdapter
 from vlm_bench.image import ProcessedImage
-from vlm_bench.pricing import PricingTable, TokenUsage
+from vlm_bench.pricing import PricingTable
 
 
-class GeminiAdapter:
-    id: str
-
+class GeminiAdapter(VisionHttpAdapter):
     def __init__(
         self,
         model_id: str,
@@ -24,12 +19,13 @@ class GeminiAdapter:
         timeout: float = 120.0,
         pricing: PricingTable | None = None,
     ) -> None:
-        self.id = model_id
-        self.model_name = model_id.split(":", 1)[-1] if ":" in model_id else model_id
-        self.api_key = api_key or os.environ.get("GOOGLE_API_KEY", "")
-        self.timeout = timeout
-        self.pricing = pricing or PricingTable.default()
-        self._client = httpx.AsyncClient(timeout=timeout)
+        super().__init__(
+            model_id,
+            api_key_env="GOOGLE_API_KEY",
+            api_key=api_key,
+            timeout=timeout,
+            pricing=pricing,
+        )
 
     async def complete(
         self,
@@ -39,15 +35,11 @@ class GeminiAdapter:
         image: ProcessedImage,
     ) -> InferenceResult:
         if not self.api_key:
-            return InferenceResult(
-                model_id=self.id,
-                raw_response="",
-                error="GOOGLE_API_KEY not set",
-            )
+            return self._missing_key_result()
         b64 = base64.b64encode(image.bytes).decode("ascii")
         url = (
             f"https://generativelanguage.googleapis.com/v1beta/models/"
-            f"{self.model_name}:generateContent?key={self.api_key}"
+            f"{self.model_name}:generateContent"
         )
         payload = {
             "systemInstruction": {"parts": [{"text": system}]} if system else None,
@@ -67,42 +59,31 @@ class GeminiAdapter:
             "generationConfig": {"maxOutputTokens": 1024},
         }
         payload = {k: v for k, v in payload.items() if v is not None}
-        start = time.perf_counter()
         try:
-            resp = await self._client.post(url, json=payload)
-            latency_ms = (time.perf_counter() - start) * 1000
+            resp, latency_ms = await self._post(
+                url,
+                payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "x-goog-api-key": self.api_key,
+                },
+            )
             if resp.status_code != 200:
-                return InferenceResult(
-                    model_id=self.id,
-                    raw_response="",
+                return self._api_error_result(
+                    provider="Gemini",
+                    status=resp.status_code,
+                    body=resp.text,
                     latency_ms=latency_ms,
-                    error=f"Gemini API error {resp.status_code}: {resp.text[:500]}",
                 )
             data = resp.json()
             parts = data["candidates"][0]["content"]["parts"]
             content = parts[0].get("text", "")
             usage_meta = data.get("usageMetadata", {})
-            usage = TokenUsage(
+            return self._result_from_usage(
+                raw=content,
                 input_tokens=usage_meta.get("promptTokenCount", 0),
                 output_tokens=usage_meta.get("candidatesTokenCount", 0),
-            )
-            cost = self.pricing.compute_cost(self.id, usage)
-            return InferenceResult(
-                model_id=self.id,
-                raw_response=content,
-                input_tokens=usage.input_tokens,
-                output_tokens=usage.output_tokens,
                 latency_ms=latency_ms,
-                cost_usd=cost,
             )
         except Exception as e:
-            latency_ms = (time.perf_counter() - start) * 1000
-            return InferenceResult(
-                model_id=self.id,
-                raw_response="",
-                latency_ms=latency_ms,
-                error=str(e),
-            )
-
-    async def close(self) -> None:
-        await self._client.aclose()
+            return self._exception_result(e, 0.0)

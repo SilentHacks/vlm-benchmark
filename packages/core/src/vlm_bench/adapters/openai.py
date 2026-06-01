@@ -3,19 +3,14 @@
 from __future__ import annotations
 
 import base64
-import os
-import time
-
-import httpx
 
 from vlm_bench.adapters.base import InferenceResult
+from vlm_bench.adapters.http_base import VisionHttpAdapter
 from vlm_bench.image import ProcessedImage
-from vlm_bench.pricing import PricingTable, TokenUsage
+from vlm_bench.pricing import PricingTable
 
 
-class OpenAIAdapter:
-    id: str
-
+class OpenAIAdapter(VisionHttpAdapter):
     def __init__(
         self,
         model_id: str,
@@ -25,13 +20,14 @@ class OpenAIAdapter:
         timeout: float = 120.0,
         pricing: PricingTable | None = None,
     ) -> None:
-        self.id = model_id
-        self.model_name = model_id.split(":", 1)[-1] if ":" in model_id else model_id
-        self.api_key = api_key or os.environ.get("OPENAI_API_KEY", "")
-        self.base_url = base_url.rstrip("/")
-        self.timeout = timeout
-        self.pricing = pricing or PricingTable.default()
-        self._client = httpx.AsyncClient(timeout=timeout)
+        super().__init__(
+            model_id,
+            api_key_env="OPENAI_API_KEY",
+            base_url=base_url,
+            api_key=api_key,
+            timeout=timeout,
+            pricing=pricing,
+        )
 
     async def complete(
         self,
@@ -41,11 +37,7 @@ class OpenAIAdapter:
         image: ProcessedImage,
     ) -> InferenceResult:
         if not self.api_key:
-            return InferenceResult(
-                model_id=self.id,
-                raw_response="",
-                error="OPENAI_API_KEY not set",
-            )
+            return self._missing_key_result()
         b64 = base64.b64encode(image.bytes).decode("ascii")
         payload = {
             "model": self.model_name,
@@ -64,45 +56,23 @@ class OpenAIAdapter:
             ],
             "max_tokens": 1024,
         }
-        start = time.perf_counter()
         try:
-            resp = await self._client.post(
-                f"{self.base_url}/chat/completions",
-                headers={"Authorization": f"Bearer {self.api_key}"},
-                json=payload,
-            )
-            latency_ms = (time.perf_counter() - start) * 1000
+            resp, latency_ms = await self._post_json("/chat/completions", payload)
             if resp.status_code != 200:
-                return InferenceResult(
-                    model_id=self.id,
-                    raw_response="",
+                return self._api_error_result(
+                    provider="OpenAI",
+                    status=resp.status_code,
+                    body=resp.text,
                     latency_ms=latency_ms,
-                    error=f"OpenAI API error {resp.status_code}: {resp.text[:500]}",
                 )
             data = resp.json()
             content = data["choices"][0]["message"]["content"]
             usage_data = data.get("usage", {})
-            usage = TokenUsage(
+            return self._result_from_usage(
+                raw=content,
                 input_tokens=usage_data.get("prompt_tokens", 0),
                 output_tokens=usage_data.get("completion_tokens", 0),
-            )
-            cost = self.pricing.compute_cost(self.id, usage)
-            return InferenceResult(
-                model_id=self.id,
-                raw_response=content,
-                input_tokens=usage.input_tokens,
-                output_tokens=usage.output_tokens,
                 latency_ms=latency_ms,
-                cost_usd=cost,
             )
         except Exception as e:
-            latency_ms = (time.perf_counter() - start) * 1000
-            return InferenceResult(
-                model_id=self.id,
-                raw_response="",
-                latency_ms=latency_ms,
-                error=str(e),
-            )
-
-    async def close(self) -> None:
-        await self._client.aclose()
+            return self._exception_result(e, 0.0)
