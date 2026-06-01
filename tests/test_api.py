@@ -13,8 +13,8 @@ CONFIG_PATH = "configs/example-bench.yaml"
 def _reset_db_engine() -> None:
     import vlm_bench.storage.db as db_mod
 
-    db_mod._engine = None
-    db_mod._SessionLocal = None
+    db_mod._engines.clear()
+    db_mod._sessionmakers.clear()
 
 
 @pytest.fixture

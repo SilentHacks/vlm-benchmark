@@ -11,18 +11,18 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from vlm_bench.storage.models import Base
 
-_engine = None
-_SessionLocal = None
+_engines: dict[str, object] = {}
+_sessionmakers: dict[str, sessionmaker] = {}
 
 
 def get_engine(db_path: str | Path = "data/vlm_bench.db"):
-    global _engine, _SessionLocal
-    if _engine is None:
+    key = str(Path(db_path).resolve())
+    if key not in _engines:
         path = Path(db_path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        _engine = create_engine(f"sqlite:///{path}", echo=False)
-        _SessionLocal = sessionmaker(bind=_engine, expire_on_commit=False)
-    return _engine
+        _engines[key] = create_engine(f"sqlite:///{path}", echo=False)
+        _sessionmakers[key] = sessionmaker(bind=_engines[key], expire_on_commit=False)
+    return _engines[key]
 
 
 def init_db(db_path: str | Path = "data/vlm_bench.db") -> None:
@@ -33,7 +33,8 @@ def init_db(db_path: str | Path = "data/vlm_bench.db") -> None:
 @contextmanager
 def session_scope(db_path: str | Path = "data/vlm_bench.db") -> Generator[Session, None, None]:
     init_db(db_path)
-    session = _SessionLocal()
+    key = str(Path(db_path).resolve())
+    session = _sessionmakers[key]()
     try:
         yield session
         session.commit()
