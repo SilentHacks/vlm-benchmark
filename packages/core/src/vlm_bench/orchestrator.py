@@ -43,12 +43,22 @@ class BenchmarkOrchestrator:
         self.config_path = config_path
         self.db_path = Path(db_path) if db_path else Path("data/vlm_bench.db")
         self._external_session = db_session
-        self.pricing = pricing or PricingTable.default()
         self.project_root = project_root or (config_path.parent if config_path else Path.cwd())
+        self.pricing = pricing or self._load_pricing_table()
         self._cancelled = False
 
     def cancel(self) -> None:
         self._cancelled = True
+
+    def _load_pricing_table(self) -> PricingTable:
+        candidates: list[Path] = []
+        if self.config_path:
+            candidates.append(self.config_path.parent / "pricing.yaml")
+        candidates.append(self.project_root / "configs" / "pricing.yaml")
+        for path in candidates:
+            if path.exists():
+                return PricingTable.from_yaml(path)
+        return PricingTable.default()
 
     async def run(
         self,

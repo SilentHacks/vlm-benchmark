@@ -34,7 +34,22 @@ class PricingTable:
     @classmethod
     def from_yaml(cls, path: Path) -> PricingTable:
         with open(path) as f:
-            return cls(yaml.safe_load(f))
+            raw = yaml.safe_load(f) or {}
+        models: dict[str, dict[str, float]] = {}
+        for model_id, entry in raw.get("models", {}).items():
+            if not isinstance(entry, dict):
+                continue
+            input_per_1k = entry.get("input_per_1k")
+            output_per_1k = entry.get("output_per_1k")
+            if input_per_1k is None and "input_per_1m" in entry:
+                input_per_1k = float(entry["input_per_1m"]) / 1000.0
+            if output_per_1k is None and "output_per_1m" in entry:
+                output_per_1k = float(entry["output_per_1m"]) / 1000.0
+            models[model_id] = {
+                "input_per_1k": float(input_per_1k or 0),
+                "output_per_1k": float(output_per_1k or 0),
+            }
+        return cls({"models": models})
 
     @classmethod
     def default(cls) -> PricingTable:
