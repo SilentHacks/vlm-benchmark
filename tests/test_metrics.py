@@ -125,6 +125,24 @@ def test_macro_f1_aggregate():
     assert abs(by_model["m1"]["primary_score"] - expected) < 1e-6
 
 
+def test_custom_plugin_example():
+    from pathlib import Path
+
+    from vlm_bench.metrics.engine import create_scorer
+
+    root = Path(__file__).resolve().parents[1]
+    cfg = MetricConfig(
+        type="custom_plugin",
+        plugin="metrics/plugins/example_plugin.py",
+    )
+    scorer = create_scorer(cfg, root)
+    ctx = _ctx({"expected_class": "defect"})
+    ctx.response = "visible defect on surface"
+    result = scorer.score(ctx)
+    assert result.passed
+    assert result.score == 1.0
+
+
 def test_json_schema():
     schema = {
         "type": "object",
