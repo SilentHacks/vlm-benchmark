@@ -24,7 +24,10 @@ def create_adapter(
         return GeminiAdapter(model_id, pricing=pricing, timeout=timeout)
     if model_id.startswith("anthropic:"):
         return AnthropicAdapter(model_id, pricing=pricing, timeout=timeout)
-    return MockAdapter(model_id)
+    raise ValueError(
+        f"Unknown model: {model_id}. "
+        "Use a known prefix: mock:, openai:, google:, gemini:, or anthropic:"
+    )
 
 
 def get_available_adapters() -> list[str]:
