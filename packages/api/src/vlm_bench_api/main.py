@@ -277,12 +277,15 @@ def _run_to_dict(run: Run) -> dict:
 
 
 def _metric_to_dict(m: MetricResult) -> dict:
+    details = json.loads(m.details_json or "{}")
+    image_path = details.pop("image_path", None) or f"fixtures/images/{m.image_id}.png"
     return {
         "image_id": m.image_id,
         "model_id": m.model_id,
         "score": m.score,
         "passed": m.passed,
-        "details": json.loads(m.details_json or "{}"),
+        "image_path": image_path,
+        "details": details,
     }
 
 

@@ -28,6 +28,7 @@ export interface MetricRow {
   model_id: string
   score: number
   passed: boolean
+  image_path?: string
   details: Record<string, unknown>
 }
 

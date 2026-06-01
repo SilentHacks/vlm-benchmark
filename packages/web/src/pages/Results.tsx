@@ -97,7 +97,7 @@ export default function Results() {
               role="button"
               tabIndex={0}
             >
-              <img src={thumbnailUrl(`images/${imageId}.png`)} alt={imageId} />
+              <img src={thumbnailUrl(rows[0].image_path || `fixtures/images/${imageId}.png`)} alt={imageId} />
               <strong>{imageId}</strong>
               {rows.map((r) => (
                 <div key={r.model_id} className="model-row">
@@ -116,7 +116,7 @@ export default function Results() {
         <div className="modal-overlay" onClick={() => setModal(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h2>{modal.imageId}</h2>
-            <img src={thumbnailUrl(`images/${modal.imageId}.png`)} alt={modal.imageId} className="modal-img" />
+            <img src={thumbnailUrl(modal.rows[0]?.image_path || `fixtures/images/${modal.imageId}.png`)} alt={modal.imageId} className="modal-img" />
             {modal.rows.map((r) => (
               <div key={r.model_id} className="modal-model">
                 <strong>{r.model_id}</strong>

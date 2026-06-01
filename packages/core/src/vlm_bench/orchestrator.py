@@ -229,7 +229,12 @@ class BenchmarkOrchestrator:
                         model_id=model_id,
                         score=metric_score.score,
                         passed=metric_score.passed,
-                        details_json=json.dumps(metric_score.details),
+                        details_json=json.dumps(
+                            {
+                                **metric_score.details,
+                                "image_path": self._image_path_for_thumbnail(row.path),
+                            }
+                        ),
                     )
                 )
                 async with lock:
@@ -314,6 +319,14 @@ class BenchmarkOrchestrator:
         import yaml
 
         return yaml.dump(self.config.model_dump(), default_flow_style=False)
+
+    def _image_path_for_thumbnail(self, absolute_path: str) -> str:
+        path = Path(absolute_path).resolve()
+        root = self.project_root.resolve()
+        try:
+            return str(path.relative_to(root))
+        except ValueError:
+            return absolute_path
 
     @staticmethod
     def _render_prompt(template: str, row: ManifestRow) -> str:
