@@ -99,6 +99,14 @@ metric: {type: custom_plugin, plugin: metrics/plugins/example_plugin.py}
     assert "CLI" in resp.json()["detail"]
 
 
+def test_cancel_run(api_client):
+    resp = api_client.post("/runs", json={"config_path": CONFIG_PATH})
+    run_id = resp.json()["run_id"]
+    cancel = api_client.post(f"/runs/{run_id}/cancel")
+    assert cancel.status_code == 200
+    assert cancel.json()["status"] == "cancelled"
+
+
 def test_validate_config(api_client):
     resp = api_client.post("/validate", json={
         "name": "test",

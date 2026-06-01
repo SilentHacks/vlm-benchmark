@@ -30,6 +30,7 @@ from vlm_bench_api.serializers import (
 DB_PATH = Path("data/vlm_bench.db")
 ROOT = Path.cwd()
 RUN_EVENTS: dict[str, list[dict]] = {}
+ACTIVE_ORCHESTRATORS: dict[str, BenchmarkOrchestrator] = {}
 
 
 @asynccontextmanager
@@ -140,6 +141,20 @@ def get_run(run_id: str) -> dict:
         return run_detail_payload(run, metrics, inferences)
 
 
+@app.post("/runs/{run_id}/cancel")
+def cancel_run(run_id: str) -> dict:
+    orch = ACTIVE_ORCHESTRATORS.get(run_id)
+    if orch:
+        orch.cancel()
+    with session_scope(DB_PATH) as session:
+        run = session.get(Run, run_id)
+        if not run:
+            raise HTTPException(404, "Run not found")
+        if run.status in ("pending", "running"):
+            run.status = "cancelled"
+    return {"run_id": run_id, "status": "cancelled"}
+
+
 @app.post("/runs")
 def start_run(body: RunCreate, background_tasks: BackgroundTasks) -> dict:
     run_id = str(uuid.uuid4())[:12]
@@ -210,6 +225,7 @@ async def _execute_run(
         db_path=DB_PATH,
         project_root=ROOT,
     )
+    ACTIVE_ORCHESTRATORS[run_id] = orch
     try:
         await orch.run(run_id=run_id, on_progress=on_progress)
     except Exception as e:
@@ -219,6 +235,7 @@ async def _execute_run(
             if run:
                 run.status = "failed"
     finally:
+        ACTIVE_ORCHESTRATORS.pop(run_id, None)
         events.append({"type": "done"})
         RUN_EVENTS.pop(run_id, None)
 
