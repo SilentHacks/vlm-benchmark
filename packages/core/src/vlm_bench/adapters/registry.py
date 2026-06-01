@@ -9,6 +9,8 @@ from vlm_bench.adapters.mock import MockAdapter
 from vlm_bench.adapters.openai import OpenAIAdapter
 from vlm_bench.pricing import PricingTable
 
+ADAPTER_PREFIXES = ("mock:", "openai:", "google:", "gemini:", "anthropic:")
+
 
 def create_adapter(
     model_id: str,

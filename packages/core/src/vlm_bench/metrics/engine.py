@@ -14,21 +14,20 @@ from vlm_bench.metrics.json_schema import JsonSchemaMetric
 from vlm_bench.metrics.plugin_loader import load_plugin, resolve_plugin_path
 from vlm_bench.metrics.regex import RegexMetric
 
+METRIC_REGISTRY: dict[str, type] = {
+    "exact_match": ExactMatchMetric,
+    "classification": ClassificationMetric,
+    "json_field_match": JsonFieldMatchMetric,
+    "contains_keywords": ContainsKeywordsMetric,
+    "regex": RegexMetric,
+    "json_schema": JsonSchemaMetric,
+}
+
 
 def create_scorer(config: MetricConfig, project_root: Path | None = None) -> MetricScorer:
     metric_type = config.type
-    if metric_type == "exact_match":
-        return ExactMatchMetric(config)
-    if metric_type == "classification":
-        return ClassificationMetric(config)
-    if metric_type == "json_field_match":
-        return JsonFieldMatchMetric(config)
-    if metric_type == "contains_keywords":
-        return ContainsKeywordsMetric(config)
-    if metric_type == "regex":
-        return RegexMetric(config)
-    if metric_type == "json_schema":
-        return JsonSchemaMetric(config)
+    if metric_type in METRIC_REGISTRY:
+        return METRIC_REGISTRY[metric_type](config)
     if metric_type in ("custom_plugin", "plugin"):
         if not config.plugin:
             raise ValueError("custom_plugin metric requires 'plugin' path")
