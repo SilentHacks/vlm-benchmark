@@ -20,6 +20,11 @@ from vlm_bench.orchestrator import BenchmarkOrchestrator
 from vlm_bench.storage.db import init_db, session_scope
 from vlm_bench.storage.models import InferenceRecord, MetricResult, Project, Run
 from vlm_bench.validation import validate_config
+from vlm_bench_api.serializers import (
+    run_detail_payload,
+    run_results_payload,
+    run_to_dict,
+)
 
 DB_PATH = Path("data/vlm_bench.db")
 ROOT = Path.cwd()
@@ -109,7 +114,7 @@ def get_project(project_id: str) -> dict:
 def list_runs(limit: int = 20) -> list[dict]:
     with session_scope(DB_PATH) as session:
         runs = session.query(Run).order_by(Run.created_at.desc()).limit(limit).all()
-        return [_run_to_dict(r) for r in runs]
+        return [run_to_dict(r) for r in runs]
 
 
 @app.get("/runs/{run_id}/results")
@@ -119,12 +124,7 @@ def get_run_results(run_id: str) -> dict:
         if not run:
             raise HTTPException(404, "Run not found")
         metrics = session.query(MetricResult).filter_by(run_id=run_id).all()
-        raw = json.loads(run.aggregates_json or "{}")
-        by_model = raw.get("by_model", raw)
-        return {
-            "metrics": [_metric_to_dict(m) for m in metrics],
-            "aggregates": {"by_model": by_model},
-        }
+        return run_results_payload(run, metrics)
 
 
 @app.get("/runs/{run_id}")
@@ -135,11 +135,7 @@ def get_run(run_id: str) -> dict:
             raise HTTPException(404, "Run not found")
         metrics = session.query(MetricResult).filter_by(run_id=run_id).all()
         inferences = session.query(InferenceRecord).filter_by(run_id=run_id).all()
-        return {
-            **_run_to_dict(run),
-            "metrics": [_metric_to_dict(m) for m in metrics],
-            "inferences": [_inf_to_dict(i) for i in inferences],
-        }
+        return run_detail_payload(run, metrics, inferences)
 
 
 @app.post("/runs")
@@ -267,44 +263,3 @@ def serve_thumbnail(image_path: str) -> FileResponse:
     if not path.exists() or not path.is_file():
         raise HTTPException(404, "Image not found")
     return FileResponse(path)
-
-
-def _run_to_dict(run: Run) -> dict:
-    raw = json.loads(run.aggregates_json or "{}")
-    by_model = raw.get("by_model", raw)
-    return {
-        "id": run.id,
-        "project_id": run.project_id,
-        "name": run.name,
-        "status": run.status,
-        "progress_completed": run.progress_completed,
-        "progress_total": run.progress_total,
-        "aggregates": {"by_model": by_model},
-        "created_at": run.created_at.isoformat() if run.created_at else None,
-        "finished_at": run.finished_at.isoformat() if run.finished_at else None,
-    }
-
-
-def _metric_to_dict(m: MetricResult) -> dict:
-    details = json.loads(m.details_json or "{}")
-    image_path = details.pop("image_path", None) or f"fixtures/images/{m.image_id}.png"
-    return {
-        "image_id": m.image_id,
-        "model_id": m.model_id,
-        "score": m.score,
-        "passed": m.passed,
-        "image_path": image_path,
-        "details": details,
-    }
-
-
-def _inf_to_dict(i: InferenceRecord) -> dict:
-    return {
-        "image_id": i.image_id,
-        "model_id": i.model_id,
-        "raw_response": i.raw_response,
-        "latency_ms": i.latency_ms,
-        "cost_usd": i.cost_usd,
-        "error": i.error,
-        "cached": i.cached,
-    }
