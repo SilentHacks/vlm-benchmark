@@ -1,6 +1,7 @@
 """Integration tests with mock adapter."""
 
 import json
+import uuid
 from pathlib import Path
 
 import pytest
@@ -53,7 +54,7 @@ async def test_resume_existing_run(tmp_path):
     with session_scope(db) as session:
         from vlm_bench.storage.models import Run
 
-        run_id = "resume-test-01"
+        run_id = f"resume-{uuid.uuid4().hex[:8]}"
         session.add(
             Run(
                 id=run_id,
@@ -81,6 +82,29 @@ async def test_resume_existing_run(tmp_path):
         runs = session.query(Run).filter_by(id=run_id).all()
         assert len(runs) == 1
         assert runs[0].status == "completed"
+
+
+@pytest.mark.asyncio
+async def test_concurrent_db_writes(tmp_path):
+    db = tmp_path / "bench.db"
+    init_db(db)
+    cfg = BenchmarkConfig.from_yaml(CONFIG_PATH)
+    cfg.execution.max_concurrency = 4
+
+    with session_scope(db) as session:
+        orch = BenchmarkOrchestrator(
+            cfg,
+            config_path=CONFIG_PATH,
+            db_session=session,
+            project_root=ROOT,
+        )
+        result = await orch.run()
+
+    with session_scope(db) as session:
+        from vlm_bench.storage.models import MetricResult
+
+        metrics = session.query(MetricResult).filter_by(run_id=result["run_id"]).all()
+        assert len(metrics) == 3 * len(cfg.models)
 
 
 @pytest.mark.asyncio

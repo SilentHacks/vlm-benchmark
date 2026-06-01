@@ -138,6 +138,7 @@ class BenchmarkOrchestrator:
         metric_records: list[dict[str, Any]] = []
         inference_out: list[dict[str, Any]] = []
         lock = asyncio.Lock()
+        db_lock = asyncio.Lock()
 
         async def process_task(row: ManifestRow, model_id: str) -> None:
             nonlocal completed
@@ -185,73 +186,73 @@ class BenchmarkOrchestrator:
                 prompt_user=user,
             )
 
-            session.add(
-                InferenceRecord(
-                    run_id=run_id,
-                    image_id=row.image_id,
-                    model_id=model_id,
-                    raw_response=result.raw_response,
-                    parsed_response=result.parsed_response,
-                    input_tokens=result.input_tokens,
-                    output_tokens=result.output_tokens,
-                    latency_ms=result.latency_ms,
-                    cost_usd=result.cost_usd,
-                    error=result.error,
-                    cached=result.cached,
-                )
-            )
-            session.add(
-                MetricResult(
-                    run_id=run_id,
-                    image_id=row.image_id,
-                    model_id=model_id,
-                    score=metric_score.score,
-                    passed=metric_score.passed,
-                    details_json=json.dumps(metric_score.details),
-                )
-            )
+            record = {
+                "model_id": model_id,
+                "image_id": row.image_id,
+                "score": metric_score.score,
+                "passed": metric_score.passed,
+                "latency_ms": result.latency_ms,
+                "cost_usd": result.cost_usd,
+                "error": result.error,
+            }
+            inference_entry = {
+                "image_id": row.image_id,
+                "model_id": model_id,
+                "raw_response": result.raw_response,
+                "latency_ms": result.latency_ms,
+                "cost_usd": result.cost_usd,
+                "error": result.error,
+                "cached": result.cached,
+            }
+            progress_event: dict[str, Any] | None = None
 
-            inference_out.append(
-                {
-                    "image_id": row.image_id,
-                    "model_id": model_id,
-                    "raw_response": result.raw_response,
-                    "latency_ms": result.latency_ms,
-                    "cost_usd": result.cost_usd,
-                    "error": result.error,
-                    "cached": result.cached,
-                }
-            )
-            metric_records.append(
-                {
-                    "model_id": model_id,
-                    "image_id": row.image_id,
-                    "score": metric_score.score,
-                    "passed": metric_score.passed,
-                    "latency_ms": result.latency_ms,
-                    "cost_usd": result.cost_usd,
-                    "error": result.error,
-                }
-            )
-
-            async with lock:
-                completed += 1
-                run.progress_completed = completed
+            async with db_lock:
+                session.add(
+                    InferenceRecord(
+                        run_id=run_id,
+                        image_id=row.image_id,
+                        model_id=model_id,
+                        raw_response=result.raw_response,
+                        parsed_response=result.parsed_response,
+                        input_tokens=result.input_tokens,
+                        output_tokens=result.output_tokens,
+                        latency_ms=result.latency_ms,
+                        cost_usd=result.cost_usd,
+                        error=result.error,
+                        cached=result.cached,
+                    )
+                )
+                session.add(
+                    MetricResult(
+                        run_id=run_id,
+                        image_id=row.image_id,
+                        model_id=model_id,
+                        score=metric_score.score,
+                        passed=metric_score.passed,
+                        details_json=json.dumps(metric_score.details),
+                    )
+                )
+                async with lock:
+                    completed += 1
+                    run.progress_completed = completed
                 session.flush()
                 if on_progress:
-                    on_progress(
-                        {
-                            "type": "progress",
-                            "run_id": run_id,
-                            "completed": completed,
-                            "total": total_tasks,
-                            "model_id": model_id,
-                            "image_id": row.image_id,
-                            "score": metric_score.score,
-                            "passed": metric_score.passed,
-                            "error": result.error,
-                        }
-                    )
+                    progress_event = {
+                        "type": "progress",
+                        "run_id": run_id,
+                        "completed": completed,
+                        "total": total_tasks,
+                        "model_id": model_id,
+                        "image_id": row.image_id,
+                        "score": metric_score.score,
+                        "passed": metric_score.passed,
+                        "error": result.error,
+                    }
+
+            inference_out.append(inference_entry)
+            metric_records.append(record)
+            if progress_event and on_progress:
+                on_progress(progress_event)
 
             if hasattr(adapter, "close"):
                 await adapter.close()
@@ -259,11 +260,12 @@ class BenchmarkOrchestrator:
         await asyncio.gather(*[process_task(row, m) for row in rows for m in models])
 
         aggregates = aggregate_run_stats(metric_records)
-        run.status = "cancelled" if self._cancelled else "completed"
-        run.aggregates_json = json.dumps({"by_model": aggregates})
-        run.finished_at = datetime.now(timezone.utc)
-        run.progress_completed = completed
-        session.flush()
+        async with db_lock:
+            run.status = "cancelled" if self._cancelled else "completed"
+            run.aggregates_json = json.dumps({"by_model": aggregates})
+            run.finished_at = datetime.now(timezone.utc)
+            run.progress_completed = completed
+            session.flush()
 
         if on_progress:
             on_progress(
