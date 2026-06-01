@@ -112,6 +112,21 @@ def list_runs(limit: int = 20) -> list[dict]:
         return [_run_to_dict(r) for r in runs]
 
 
+@app.get("/runs/{run_id}/results")
+def get_run_results(run_id: str) -> dict:
+    with session_scope(DB_PATH) as session:
+        run = session.get(Run, run_id)
+        if not run:
+            raise HTTPException(404, "Run not found")
+        metrics = session.query(MetricResult).filter_by(run_id=run_id).all()
+        raw = json.loads(run.aggregates_json or "{}")
+        by_model = raw.get("by_model", raw)
+        return {
+            "metrics": [_metric_to_dict(m) for m in metrics],
+            "aggregates": {"by_model": by_model},
+        }
+
+
 @app.get("/runs/{run_id}")
 def get_run(run_id: str) -> dict:
     with session_scope(DB_PATH) as session:

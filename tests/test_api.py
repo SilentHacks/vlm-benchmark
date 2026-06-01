@@ -61,6 +61,13 @@ def test_post_runs_through_completion(api_client):
     assert detail["metrics"]
     assert detail["progress_completed"] == detail["progress_total"]
 
+    results = api_client.get(f"/runs/{run_id}/results")
+    assert results.status_code == 200
+    body = results.json()
+    assert "metrics" in body
+    assert body["metrics"]
+    assert "aggregates" in body
+
 
 def test_validate_config(api_client):
     resp = api_client.post("/validate", json={
