@@ -94,15 +94,26 @@ class BenchmarkOrchestrator:
         models = model_filter or self.config.models
         total_tasks = len(rows) * len(models)
 
-        run = Run(
-            id=run_id,
-            name=self.config.name,
-            status="running",
-            config_yaml=self._config_yaml(),
-            progress_completed=0,
-            progress_total=total_tasks,
-        )
-        session.add(run)
+        existing = session.get(Run, run_id)
+        if existing is not None:
+            run = existing
+            run.name = self.config.name
+            run.status = "running"
+            run.config_yaml = self._config_yaml()
+            run.progress_completed = 0
+            run.progress_total = total_tasks
+            run.aggregates_json = "{}"
+            run.finished_at = None
+        else:
+            run = Run(
+                id=run_id,
+                name=self.config.name,
+                status="running",
+                config_yaml=self._config_yaml(),
+                progress_completed=0,
+                progress_total=total_tasks,
+            )
+            session.add(run)
         session.flush()
 
         cache = (

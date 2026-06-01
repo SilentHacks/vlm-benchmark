@@ -45,6 +45,45 @@ async def test_golden_run(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_resume_existing_run(tmp_path):
+    db = tmp_path / "bench.db"
+    init_db(db)
+    cfg = BenchmarkConfig.from_yaml(CONFIG_PATH)
+
+    with session_scope(db) as session:
+        from vlm_bench.storage.models import Run
+
+        run_id = "resume-test-01"
+        session.add(
+            Run(
+                id=run_id,
+                name="pending",
+                status="pending",
+                config_yaml="",
+                progress_completed=0,
+                progress_total=0,
+            )
+        )
+        session.flush()
+
+        orch = BenchmarkOrchestrator(
+            cfg,
+            config_path=CONFIG_PATH,
+            db_session=session,
+            project_root=ROOT,
+        )
+        result = await orch.run(run_id=run_id)
+
+    assert result["status"] == "completed"
+    with session_scope(db) as session:
+        from vlm_bench.storage.models import Run
+
+        runs = session.query(Run).filter_by(id=run_id).all()
+        assert len(runs) == 1
+        assert runs[0].status == "completed"
+
+
+@pytest.mark.asyncio
 async def test_mock_adapter_deterministic():
     from vlm_bench.adapters.mock import MockAdapter
     from vlm_bench.image import preprocess_image
