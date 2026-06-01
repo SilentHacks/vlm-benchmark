@@ -31,5 +31,5 @@ def test_cost_tracker_summary():
     tracker.record("mock:test", usage=TokenUsage(100, 20), latency_ms=200.0)
     summary = tracker.summary()
     assert "mock:test" in summary
-    assert summary["mock:test"]["latency_ms"]["p50"] == 200.0
+    assert summary["mock:test"]["latency_ms"]["p50"] == 150.0
     assert summary["mock:test"]["latency_ms"]["mean"] == 150.0

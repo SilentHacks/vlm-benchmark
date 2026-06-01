@@ -134,13 +134,15 @@ class CostLatencyTracker:
         return cost
 
     def summary(self) -> dict[str, Any]:
+        from vlm_bench.cost import aggregate_latency
+
         result: dict[str, Any] = {}
         all_models = set(self.cost_by_model) | set(self.latency_by_model) | set(self.errors_by_model)
         for model_id in all_models:
             lat = self.latency_by_model.get(model_id, LatencyStats())
             result[model_id] = {
                 "cost_usd": round(self.cost_by_model.get(model_id, 0.0), 6),
-                "latency_ms": {"p50": lat.p50, "p95": lat.p95, "mean": lat.mean},
+                "latency_ms": aggregate_latency(lat.values_ms),
                 "errors": self.errors_by_model.get(model_id, 0),
             }
         return result
