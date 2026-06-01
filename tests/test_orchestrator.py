@@ -21,6 +21,13 @@ def test_validate_config():
     assert errors == [], f"Validation errors: {errors}"
 
 
+def test_validate_json_schema_example_config():
+    from vlm_bench.validation import validate_json_schema
+
+    cfg = BenchmarkConfig.from_yaml(CONFIG_PATH)
+    assert validate_json_schema(cfg) == []
+
+
 @pytest.mark.asyncio
 async def test_golden_run(tmp_path):
     db = tmp_path / "bench.db"
