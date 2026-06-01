@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import uuid
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
@@ -31,7 +32,13 @@ ROOT = Path.cwd()
 RUN_EVENTS: dict[str, list[dict]] = {}
 
 
-app = FastAPI(title="VLM Benchmark API", version="0.1.0")
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    init_db(DB_PATH)
+    yield
+
+
+app = FastAPI(title="VLM Benchmark API", version="0.1.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -43,11 +50,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-def startup() -> None:
-    init_db(DB_PATH)
 
 
 class ProjectCreate(BaseModel):
