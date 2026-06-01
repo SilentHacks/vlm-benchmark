@@ -12,8 +12,8 @@ ROOT = Path(__file__).resolve().parents[1]
 def api_client(tmp_path, monkeypatch):
     import vlm_bench.storage.db as db_mod
 
-    db_mod._engine = None
-    db_mod._SessionLocal = None
+    db_mod._engines.clear()
+    db_mod._sessionmakers.clear()
     db = tmp_path / "contract.db"
     monkeypatch.setattr("vlm_bench_api.main.DB_PATH", db)
     monkeypatch.setattr("vlm_bench_api.main.ROOT", ROOT)
@@ -21,14 +21,26 @@ def api_client(tmp_path, monkeypatch):
 
     with TestClient(app) as client:
         yield client
-    db_mod._engine = None
-    db_mod._SessionLocal = None
+    db_mod._engines.clear()
+    db_mod._sessionmakers.clear()
 
 
 def test_contract_routes_exist(api_client):
     assert api_client.get("/health").status_code == 200
     assert api_client.get("/runs").status_code == 200
-    assert api_client.post("/validate", json={"name": "x"}).status_code == 200
+    assert (
+        api_client.post(
+            "/validate",
+            json={
+                "name": "x",
+                "prompts": {"system": "", "user": "test"},
+                "dataset": {"manifest": "fixtures/manifest.jsonl", "base_dir": "fixtures"},
+                "models": ["mock:deterministic"],
+                "metric": {"type": "classification", "labels_field": "expected_class"},
+            },
+        ).status_code
+        == 200
+    )
 
     run = api_client.post("/runs", json={"config_path": "configs/example-bench.yaml"})
     assert run.status_code == 200
