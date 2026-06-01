@@ -26,10 +26,8 @@ export default function RunView() {
           prev
             ? {
                 ...prev,
-                progress_completed: data.completed,
-                progress_total: data.total,
-                completed_tasks: data.completed,
-                total_tasks: data.total,
+                progress_completed: data.completed ?? data.progress_completed ?? prev.progress_completed,
+                progress_total: data.total ?? data.progress_total ?? prev.progress_total,
               }
             : prev,
         )
@@ -45,8 +43,8 @@ export default function RunView() {
   if (error) return <p className="error">{error}</p>
   if (!run) return <p>Loading run...</p>
 
-  const total = run.progress_total || run.total_tasks || 0
-  const completed = run.progress_completed || run.completed_tasks || 0
+  const total = run.progress_total ?? 0
+  const completed = run.progress_completed ?? 0
   const pct = total > 0 ? (completed / total) * 100 : 0
 
   return (
