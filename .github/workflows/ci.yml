@@ -46,3 +46,6 @@ jobs:
       - name: Build web
         working-directory: packages/web
         run: npm run build
+
+      - name: Build API Docker image
+        run: docker build -f Dockerfile.api -t vlm-bench-api:ci .
