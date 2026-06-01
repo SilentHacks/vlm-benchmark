@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from vlm_bench.adapters.registry import create_adapter
 from vlm_bench.cache import InferenceCache, cache_key
 from vlm_bench.config import BenchmarkConfig, ManifestRow
-from vlm_bench.cost import aggregate_run_stats
+from vlm_bench.cost import aggregate_run_stats, merge_tracker_summary
 from vlm_bench.dataset import load_manifest
 from vlm_bench.image import ProcessedImage, preprocess_image
 from vlm_bench.metrics.base import MetricScore
@@ -282,6 +282,7 @@ class BenchmarkOrchestrator:
             metric_engine=metric_engine,
             scores_by_model=scores_by_model,
         )
+        aggregates = merge_tracker_summary(aggregates, tracker.summary())
         async with db_lock:
             run.status = "cancelled" if self._cancelled else "completed"
             run.aggregates_json = json.dumps({"by_model": aggregates})

@@ -61,3 +61,17 @@ def aggregate_run_stats(
             "errors": errors,
         }
     return result
+
+
+def merge_tracker_summary(
+    aggregates: dict[str, dict[str, Any]],
+    tracker_summary: dict[str, Any],
+) -> dict[str, dict[str, Any]]:
+    for model_id, stats in aggregates.items():
+        tracked = tracker_summary.get(model_id)
+        if not tracked:
+            continue
+        stats["latency_ms"] = tracked["latency_ms"]
+        stats["cost_usd"] = tracked["cost_usd"]
+        stats["errors"] = tracked["errors"]
+    return aggregates
