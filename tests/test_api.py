@@ -82,6 +82,23 @@ def test_config_path_jail(api_client):
     assert resp.status_code == 400
 
 
+def test_custom_plugin_rejected_on_http(api_client):
+    resp = api_client.post(
+        "/runs",
+        json={
+            "config_yaml": """
+name: plugin-test
+prompts: {system: '', user: 'x'}
+dataset: {manifest: fixtures/manifest.jsonl, base_dir: fixtures}
+models: [mock:deterministic]
+metric: {type: custom_plugin, plugin: metrics/plugins/example_plugin.py}
+""",
+        },
+    )
+    assert resp.status_code == 400
+    assert "CLI" in resp.json()["detail"]
+
+
 def test_validate_config(api_client):
     resp = api_client.post("/validate", json={
         "name": "test",

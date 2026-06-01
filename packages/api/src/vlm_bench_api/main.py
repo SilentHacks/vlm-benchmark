@@ -159,6 +159,12 @@ def start_run(body: RunCreate, background_tasks: BackgroundTasks) -> dict:
     else:
         raise HTTPException(400, "config_yaml or config_path required")
 
+    if config.metric.type in ("custom_plugin", "plugin"):
+        raise HTTPException(
+            400,
+            "custom_plugin metrics are only supported via the CLI (not HTTP runs)",
+        )
+
     errors = validate_config(config, config_path or ROOT)
     if errors:
         raise HTTPException(400, detail={"errors": errors})
