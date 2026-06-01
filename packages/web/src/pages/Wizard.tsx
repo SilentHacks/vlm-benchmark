@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import YAML from 'js-yaml'
 import { createRun, validateConfig } from '../api'
 
 const STEPS = ['Dataset', 'Prompts', 'Models', 'Metric', 'Review']
@@ -183,25 +184,5 @@ export default function Wizard() {
 }
 
 function configToYaml(config: typeof DEFAULT_CONFIG): string {
-  const lines: string[] = []
-  lines.push(`name: ${config.name}`)
-  lines.push('prompts:')
-  lines.push(`  system: "${config.prompts.system}"`)
-  lines.push(`  user: "${config.prompts.user}"`)
-  lines.push('dataset:')
-  lines.push(`  manifest: ${config.dataset.manifest}`)
-  lines.push(`  base_dir: ${config.dataset.base_dir}`)
-  lines.push('models:')
-  config.models.forEach((m) => lines.push(`  - ${m}`))
-  lines.push('metric:')
-  lines.push(`  type: ${config.metric.type}`)
-  lines.push('  parse:')
-  lines.push(`    mode: ${config.metric.parse.mode}`)
-  lines.push(`    path: "${config.metric.parse.path}"`)
-  lines.push(`  labels_field: ${config.metric.labels_field}`)
-  lines.push(`  aggregate: ${config.metric.aggregate}`)
-  lines.push('execution:')
-  lines.push(`  max_concurrency: ${config.execution.max_concurrency}`)
-  lines.push(`  cache: ${config.execution.cache}`)
-  return lines.join('\n')
+  return YAML.stringify(config)
 }
