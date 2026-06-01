@@ -34,6 +34,14 @@ cd packages/web && npm install && npm run dev
 
 Open http://localhost:5173
 
+## Security
+
+The API has **no authentication**. Bind to `127.0.0.1` for local development only; do not expose `0.0.0.0` on untrusted networks without a reverse proxy and access controls.
+
+`custom_plugin` metrics load and execute arbitrary Python from disk. They are supported on the **CLI only**; HTTP `POST /runs` rejects plugin metrics.
+
+Config and thumbnail paths are resolved under the project root.
+
 ## Architecture
 
 ```

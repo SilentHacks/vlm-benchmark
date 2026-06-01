@@ -60,7 +60,8 @@ export async function createRun(configYaml: string): Promise<{ id: string }> {
     body: JSON.stringify({ config_yaml: configYaml }),
   })
   if (!res.ok) throw new Error('Failed to create run')
-  return res.json()
+  const data = await res.json()
+  return { id: data.id || data.run_id }
 }
 
 export async function validateConfig(config: Record<string, unknown>): Promise<{ valid: boolean; errors: string[] }> {
