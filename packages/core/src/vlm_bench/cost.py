@@ -1,8 +1,12 @@
 """Cost aggregation and latency statistics."""
 
-from __future__ import annotations
+from __future__ import annotations  # noqa: I001
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from vlm_bench.metrics.base import MetricScore
+    from vlm_bench.metrics.engine import MetricEngine
 
 
 def percentile(values: list[float], p: float) -> float:
@@ -25,7 +29,12 @@ def aggregate_latency(latencies: list[float]) -> dict[str, float]:
     }
 
 
-def aggregate_run_stats(records: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+def aggregate_run_stats(
+    records: list[dict[str, Any]],
+    *,
+    metric_engine: MetricEngine | None = None,
+    scores_by_model: dict[str, list[MetricScore]] | None = None,
+) -> dict[str, dict[str, Any]]:
     by_model: dict[str, list[dict]] = {}
     for r in records:
         mid = r.get("model_id", "unknown")
@@ -38,8 +47,13 @@ def aggregate_run_stats(records: list[dict[str, Any]]) -> dict[str, dict[str, An
         costs = [r.get("cost_usd", 0.0) or 0.0 for r in rows]
         errors = sum(1 for r in rows if r.get("error"))
         passed = sum(1 for r in rows if r.get("passed"))
+        model_scores = (scores_by_model or {}).get(model_id, [])
+        if metric_engine and model_scores:
+            primary_score = metric_engine.aggregate(model_scores)
+        else:
+            primary_score = sum(scores) / len(scores) if scores else 0.0
         result[model_id] = {
-            "primary_score": sum(scores) / len(scores) if scores else 0.0,
+            "primary_score": primary_score,
             "correct": passed,
             "total": len(rows),
             "latency_ms": aggregate_latency(latencies),

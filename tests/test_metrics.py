@@ -85,6 +85,46 @@ def test_regex():
     assert RegexMetric(cfg).score(ctx).passed
 
 
+def test_macro_f1_aggregate():
+    from sklearn.metrics import f1_score
+
+    from vlm_bench.config import BenchmarkConfig
+    from vlm_bench.cost import aggregate_run_stats
+    from vlm_bench.metrics.base import MetricScore
+    from vlm_bench.metrics.engine import MetricEngine
+
+    cfg = BenchmarkConfig.model_validate(
+        {
+            "name": "macro-test",
+            "prompts": {"system": "", "user": ""},
+            "dataset": {"manifest": "fixtures/manifest.jsonl", "base_dir": "fixtures"},
+            "models": ["mock:deterministic"],
+            "metric": {
+                "type": "classification",
+                "labels_field": "expected_class",
+                "aggregate": "macro_f1",
+            },
+        }
+    )
+    engine = MetricEngine(cfg)
+    scores = [
+        MetricScore(1.0, True, {"expected": "cat", "actual": "cat"}),
+        MetricScore(0.0, False, {"expected": "cat", "actual": "dog"}),
+        MetricScore(1.0, True, {"expected": "dog", "actual": "dog"}),
+    ]
+    records = [{"model_id": "m1", "score": s.score, "passed": s.passed} for s in scores]
+    by_model = aggregate_run_stats(
+        records,
+        metric_engine=engine,
+        scores_by_model={"m1": scores},
+    )
+    y_true = [s.details["expected"] for s in scores]
+    y_pred = [s.details["actual"] for s in scores]
+    labels = sorted(set(y_true) | set(y_pred))
+    expected = float(f1_score(y_true, y_pred, labels=labels, average="macro", zero_division=0))
+    assert abs(by_model["m1"]["primary_score"] - expected) < 1e-6
+
+
 def test_json_schema():
     schema = {
         "type": "object",

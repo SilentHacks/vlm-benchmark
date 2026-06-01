@@ -18,6 +18,7 @@ from vlm_bench.config import BenchmarkConfig, ManifestRow
 from vlm_bench.cost import aggregate_run_stats
 from vlm_bench.dataset import load_manifest
 from vlm_bench.image import ProcessedImage, preprocess_image
+from vlm_bench.metrics.base import MetricScore
 from vlm_bench.metrics.engine import MetricEngine
 from vlm_bench.pricing import CostLatencyTracker, PricingTable
 from vlm_bench.storage.db import init_db, session_scope
@@ -136,6 +137,7 @@ class BenchmarkOrchestrator:
         semaphores = {m: asyncio.Semaphore(self.config.execution.max_concurrency) for m in models}
         completed = 0
         metric_records: list[dict[str, Any]] = []
+        scores_by_model: dict[str, list[MetricScore]] = {}
         inference_out: list[dict[str, Any]] = []
         lock = asyncio.Lock()
         db_lock = asyncio.Lock()
@@ -256,6 +258,7 @@ class BenchmarkOrchestrator:
 
             inference_out.append(inference_entry)
             metric_records.append(record)
+            scores_by_model.setdefault(model_id, []).append(metric_score)
             if progress_event and on_progress:
                 on_progress(progress_event)
 
@@ -264,7 +267,11 @@ class BenchmarkOrchestrator:
 
         await asyncio.gather(*[process_task(row, m) for row in rows for m in models])
 
-        aggregates = aggregate_run_stats(metric_records)
+        aggregates = aggregate_run_stats(
+            metric_records,
+            metric_engine=metric_engine,
+            scores_by_model=scores_by_model,
+        )
         async with db_lock:
             run.status = "cancelled" if self._cancelled else "completed"
             run.aggregates_json = json.dumps({"by_model": aggregates})
