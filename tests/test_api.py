@@ -107,6 +107,32 @@ def test_cancel_run(api_client):
     assert cancel.json()["status"] == "cancelled"
 
 
+def test_fail_under_marks_run_failed(api_client):
+    resp = api_client.post(
+        "/runs",
+        json={
+            "config_yaml": """
+name: fail-under-test
+prompts: {system: '', user: 'Classify. JSON: {"label": "<class>"}'}
+dataset: {manifest: fixtures/manifest.jsonl, base_dir: fixtures}
+models: [mock:deterministic]
+metric: {type: classification, labels_field: expected_class, parse: {mode: json, path: '$.label'}}
+execution: {max_concurrency: 1, cache: true, retries: 0, timeout_seconds: 30}
+fail_under: 1.01
+""",
+        },
+    )
+    assert resp.status_code == 200
+    run_id = resp.json()["run_id"]
+    deadline = time.time() + 30
+    while time.time() < deadline:
+        detail = api_client.get(f"/runs/{run_id}").json()
+        if detail["status"] in ("completed", "failed", "cancelled"):
+            break
+        time.sleep(0.2)
+    assert api_client.get(f"/runs/{run_id}").json()["status"] == "failed"
+
+
 def test_validate_config(api_client):
     resp = api_client.post("/validate", json={
         "name": "test",
