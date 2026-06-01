@@ -14,9 +14,13 @@ from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+
+from vlm_bench_api.schemas import RunDetail, RunResults, ValidateRequest, ValidateResponse
 from sse_starlette.sse import EventSourceResponse
 
 from vlm_bench.config import BenchmarkConfig
+from vlm_bench.paths import resolve_paths
+from vlm_bench.run_service import create_pending_run
 from vlm_bench.orchestrator import BenchmarkOrchestrator
 from vlm_bench.storage.db import init_db, session_scope
 from vlm_bench.storage.models import InferenceRecord, MetricResult, Project, Run
@@ -70,14 +74,13 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.post("/validate")
-def validate_body(body: dict[str, Any]) -> dict[str, Any]:
+@app.post("/validate", response_model=ValidateResponse)
+def validate_body(body: ValidateRequest) -> ValidateResponse:
     try:
-        config = BenchmarkConfig.model_validate(body)
-        errors = validate_config(config, ROOT)
-        return {"valid": len(errors) == 0, "errors": errors}
+        errors = validate_config(body, ROOT)
+        return ValidateResponse(valid=len(errors) == 0, errors=errors)
     except Exception as e:
-        return {"valid": False, "errors": [str(e)]}
+        return ValidateResponse(valid=False, errors=[str(e)])
 
 
 @app.get("/projects")
@@ -120,25 +123,25 @@ def list_runs(limit: int = 20) -> list[dict]:
         return [run_to_dict(r) for r in runs]
 
 
-@app.get("/runs/{run_id}/results")
-def get_run_results(run_id: str) -> dict:
+@app.get("/runs/{run_id}/results", response_model=RunResults)
+def get_run_results(run_id: str) -> RunResults:
     with session_scope(DB_PATH) as session:
         run = session.get(Run, run_id)
         if not run:
             raise HTTPException(404, "Run not found")
         metrics = session.query(MetricResult).filter_by(run_id=run_id).all()
-        return run_results_payload(run, metrics)
+        return RunResults.model_validate(run_results_payload(run, metrics))
 
 
-@app.get("/runs/{run_id}")
-def get_run(run_id: str) -> dict:
+@app.get("/runs/{run_id}", response_model=RunDetail)
+def get_run(run_id: str) -> RunDetail:
     with session_scope(DB_PATH) as session:
         run = session.get(Run, run_id)
         if not run:
             raise HTTPException(404, "Run not found")
         metrics = session.query(MetricResult).filter_by(run_id=run_id).all()
         inferences = session.query(InferenceRecord).filter_by(run_id=run_id).all()
-        return run_detail_payload(run, metrics, inferences)
+        return RunDetail.model_validate(run_detail_payload(run, metrics, inferences))
 
 
 @app.post("/runs/{run_id}/cancel")
@@ -188,22 +191,21 @@ def start_run(body: RunCreate, background_tasks: BackgroundTasks) -> dict:
         from vlm_bench.dataset import load_manifest
 
         try:
-            rows = load_manifest(
-                config.resolve_manifest_path(config_path),
-                config.resolve_base_dir(config_path),
+            manifest_path, base_dir = resolve_paths(
+                config, config_path=config_path, project_root=ROOT
             )
+            rows = load_manifest(manifest_path, base_dir)
             total = len(rows) * len(config.models)
         except Exception:
             total = len(config.models) * 3
-        run = Run(
-            id=run_id,
-            project_id=body.project_id,
+        create_pending_run(
+            session,
+            run_id=run_id,
             name=body.name or config.name,
-            status="pending",
             config_yaml=yaml.dump(config.model_dump()),
             progress_total=total,
+            project_id=body.project_id,
         )
-        session.add(run)
 
     background_tasks.add_task(_execute_run, run_id, config, config_path)
     return {"run_id": run_id, "status": "started"}

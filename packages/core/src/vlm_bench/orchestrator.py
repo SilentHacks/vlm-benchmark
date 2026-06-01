@@ -6,7 +6,6 @@ import asyncio
 import json
 import uuid
 from collections.abc import Callable
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +21,8 @@ from vlm_bench.metrics.base import MetricScore
 from vlm_bench.metrics.engine import MetricEngine
 from vlm_bench.pricing import CostLatencyTracker, PricingTable
 from vlm_bench.storage.db import init_db, session_scope
+from vlm_bench.paths import resolve_paths
+from vlm_bench.run_service import begin_run, finalize_run
 from vlm_bench.storage.models import InferenceRecord, MetricResult, Run
 
 
@@ -99,33 +100,22 @@ class BenchmarkOrchestrator:
             raise ValueError("; ".join(errors))
 
         run_id = run_id or str(uuid.uuid4())[:12]
-        manifest_path = self.config.resolve_manifest_path(self.config_path)
-        base_dir = self.config.resolve_base_dir(self.config_path)
+        manifest_path, base_dir = resolve_paths(
+            self.config,
+            config_path=self.config_path,
+            project_root=self.project_root,
+        )
         rows = load_manifest(manifest_path, base_dir)
         models = model_filter or self.config.models
         total_tasks = len(rows) * len(models)
 
-        existing = session.get(Run, run_id)
-        if existing is not None:
-            run = existing
-            run.name = self.config.name
-            run.status = "running"
-            run.config_yaml = self._config_yaml()
-            run.progress_completed = 0
-            run.progress_total = total_tasks
-            run.aggregates_json = "{}"
-            run.finished_at = None
-        else:
-            run = Run(
-                id=run_id,
-                name=self.config.name,
-                status="running",
-                config_yaml=self._config_yaml(),
-                progress_completed=0,
-                progress_total=total_tasks,
-            )
-            session.add(run)
-        session.flush()
+        run = begin_run(
+            session,
+            run_id,
+            self.config,
+            config_yaml=self._config_yaml(),
+            progress_total=total_tasks,
+        )
 
         cache = (
             InferenceCache(session, ttl_hours=self.config.execution.cache_ttl_hours)
@@ -284,11 +274,13 @@ class BenchmarkOrchestrator:
         )
         aggregates = merge_tracker_summary(aggregates, tracker.summary())
         async with db_lock:
-            run.status = "cancelled" if self._cancelled else "completed"
-            run.aggregates_json = json.dumps({"by_model": aggregates})
-            run.finished_at = datetime.now(timezone.utc)
-            run.progress_completed = completed
-            session.flush()
+            finalize_run(
+                session,
+                run,
+                status="cancelled" if self._cancelled else "completed",
+                aggregates=aggregates,
+                progress_completed=completed,
+            )
 
         if on_progress:
             on_progress(
@@ -316,12 +308,16 @@ class BenchmarkOrchestrator:
 
     def _validate(self) -> list[str]:
         errors: list[str] = []
-        manifest_path = self.config.resolve_manifest_path(self.config_path)
+        manifest_path, base_dir = resolve_paths(
+            self.config,
+            config_path=self.config_path,
+            project_root=self.project_root,
+        )
         if not manifest_path.exists():
             errors.append(f"Manifest not found: {manifest_path}")
             return errors
         try:
-            rows = load_manifest(manifest_path, self.config.resolve_base_dir(self.config_path))
+            rows = load_manifest(manifest_path, base_dir)
             if not rows:
                 errors.append("Manifest is empty")
             for row in rows:
