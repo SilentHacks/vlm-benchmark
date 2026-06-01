@@ -4,19 +4,41 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import json
+
+import jsonschema
 from vlm_bench.config import BenchmarkConfig
 from vlm_bench.dataset import load_manifest
 from vlm_bench.metrics.engine import create_scorer
+from vlm_bench.paths import resolve_paths
+
+_SCHEMA_PATH = Path(__file__).resolve().parents[3] / "schemas" / "benchmark-config.schema.json"
+
+
+def validate_json_schema(config: BenchmarkConfig) -> list[str]:
+    if not _SCHEMA_PATH.exists():
+        return []
+    with open(_SCHEMA_PATH) as f:
+        schema = json.load(f)
+    try:
+        jsonschema.validate(config.model_dump(), schema)
+        return []
+    except jsonschema.ValidationError as e:
+        return [f"JSON Schema: {e.message}"]
 
 
 def validate_config(config: BenchmarkConfig, config_path: Path | None = None) -> list[str]:
     errors: list[str] = []
-    manifest_path = config.resolve_manifest_path(config_path)
+    errors.extend(validate_json_schema(config))
+    project_root = config_path.parent if config_path else Path.cwd()
+    manifest_path, base_dir = resolve_paths(
+        config, config_path=config_path, project_root=project_root
+    )
     if not manifest_path.exists():
         errors.append(f"Manifest not found: {manifest_path}")
     else:
         try:
-            rows = load_manifest(manifest_path, config.resolve_base_dir(config_path))
+            rows = load_manifest(manifest_path, base_dir)
             if not rows:
                 errors.append("Manifest is empty")
             for row in rows:
