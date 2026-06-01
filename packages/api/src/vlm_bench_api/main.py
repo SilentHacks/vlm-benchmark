@@ -204,13 +204,13 @@ async def _execute_run(
     def on_progress(event: dict) -> None:
         events.append(event)
 
+    orch = BenchmarkOrchestrator(
+        config,
+        config_path=config_path,
+        db_path=DB_PATH,
+        project_root=ROOT,
+    )
     try:
-        orch = BenchmarkOrchestrator(
-            config,
-            config_path=config_path,
-            db_path=DB_PATH,
-            project_root=ROOT,
-        )
         await orch.run(run_id=run_id, on_progress=on_progress)
     except Exception as e:
         events.append({"type": "error", "message": str(e)})
@@ -218,7 +218,9 @@ async def _execute_run(
             run = session.get(Run, run_id)
             if run:
                 run.status = "failed"
-    events.append({"type": "done"})
+    finally:
+        events.append({"type": "done"})
+        RUN_EVENTS.pop(run_id, None)
 
 
 @app.get("/runs/{run_id}/events")
@@ -241,6 +243,7 @@ async def run_events(run_id: str):
                             "event": "message",
                             "data": json.dumps({"type": "done", "status": run.status}),
                         }
+                    RUN_EVENTS.pop(run_id, None)
                     return
 
     return EventSourceResponse(event_generator())
