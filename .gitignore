@@ -14,8 +14,8 @@ htmlcov/
 .mypy_cache/
 .ruff_cache/
 
-# uv
-uv.lock
+# uv (lockfile is committed for reproducible installs)
+# .venv/ is local only
 
 # Data & runs
 data/

@@ -1,10 +1,16 @@
 [project]
 name = "vlm-benchmark"
 version = "0.1.0"
-description = "VLM benchmarking platform — compare vision models on datasets with pluggable metrics"
+description = "Benchmark vision-language models on image datasets with pluggable metrics, cost tracking, and a web dashboard"
 readme = "README.md"
 requires-python = ">=3.11"
+license = { text = "MIT" }
 dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/SilentHacks/vlm-benchmark"
+Repository = "https://github.com/SilentHacks/vlm-benchmark"
+Issues = "https://github.com/SilentHacks/vlm-benchmark/issues"
 
 [tool.uv.workspace]
 members = [
