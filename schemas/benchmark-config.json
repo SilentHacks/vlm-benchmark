@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://vlm-benchmark.dev/schemas/benchmark-config.json",
+  "title": "BenchmarkConfig",
+  "type": "object",
+  "required": ["name", "prompts", "dataset", "models", "metric"],
+  "properties": {
+    "name": { "type": "string" },
+    "prompts": {
+      "type": "object",
+      "properties": {
+        "system": { "type": "string" },
+        "user": { "type": "string" }
+      }
+    },
+    "dataset": {
+      "type": "object",
+      "required": ["manifest"],
+      "properties": {
+        "manifest": { "type": "string" },
+        "base_dir": { "type": "string" }
+      }
+    },
+    "models": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "metric": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string" },
+        "aggregate": { "type": "string" }
+      }
+    },
+    "execution": { "type": "object" },
+    "image": { "type": "object" },
+    "fail_under": { "type": "number" }
+  }
+}

@@ -1,0 +1,22 @@
+[project]
+name = "vlm-bench-api"
+version = "0.1.0"
+description = "VLM benchmark FastAPI server"
+requires-python = ">=3.11"
+dependencies = [
+    "vlm-bench-core",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "python-multipart>=0.0.9",
+    "sse-starlette>=2.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/vlm_bench_api"]
+
+[tool.uv.sources]
+vlm-bench-core = { workspace = true }

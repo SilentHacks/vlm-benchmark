@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vlm-benchmark.dev/schemas/manifest.schema.json",
+  "title": "DatasetManifestRow",
+  "type": "object",
+  "required": ["image_id", "path"],
+  "properties": {
+    "image_id": { "type": "string" },
+    "path": { "type": "string" },
+    "expected_class": { "type": "string" },
+    "metadata": { "type": "object" }
+  },
+  "additionalProperties": true
+}

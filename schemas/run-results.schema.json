@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vlm-benchmark.dev/schemas/run-results.schema.json",
+  "title": "RunAggregates",
+  "type": "object",
+  "properties": {
+    "run_id": { "type": "string" },
+    "by_model": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "primary_score": { "type": "number" },
+          "latency_ms": {
+            "type": "object",
+            "properties": {
+              "p50": { "type": "number" },
+              "p95": { "type": "number" }
+            }
+          },
+          "cost_usd": { "type": "number" },
+          "errors": { "type": "integer" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,13 @@
+models:
+  gpt-4o:
+    input_per_1m: 2.50
+    output_per_1m: 10.00
+  gemini-2.0-flash:
+    input_per_1m: 0.10
+    output_per_1m: 0.40
+  claude-3-5-sonnet-20241022:
+    input_per_1m: 3.00
+    output_per_1m: 15.00
+  deterministic:
+    input_per_1m: 0.0
+    output_per_1m: 0.0

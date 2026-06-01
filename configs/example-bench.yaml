@@ -1,0 +1,25 @@
+name: fixture-classification-v1
+prompts:
+  system: "You are a visual inspector."
+  user: 'Classify this image. Reply JSON only: {"label": "<class>"}'
+dataset:
+  manifest: ../fixtures/manifest.jsonl
+  base_dir: ../fixtures
+models:
+  - mock:deterministic
+metric:
+  type: classification
+  parse:
+    mode: json
+    path: "$.label"
+  labels_field: expected_class
+  aggregate: accuracy
+execution:
+  max_concurrency: 4
+  cache: true
+  retries: 1
+  timeout_seconds: 30.0
+image:
+  max_long_edge: 512
+  jpeg_quality: 85
+fail_under: 0.5
