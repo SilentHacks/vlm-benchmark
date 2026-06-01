@@ -77,6 +77,11 @@ def test_thumbnail_jail(api_client):
     assert resp.status_code == 200
 
 
+def test_config_path_jail(api_client):
+    resp = api_client.post("/runs", json={"config_path": "/etc/passwd"})
+    assert resp.status_code == 400
+
+
 def test_validate_config(api_client):
     resp = api_client.post("/validate", json={
         "name": "test",

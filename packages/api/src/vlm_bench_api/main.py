@@ -149,9 +149,12 @@ def start_run(body: RunCreate, background_tasks: BackgroundTasks) -> dict:
     if body.config_yaml:
         config = BenchmarkConfig.model_validate(yaml.safe_load(body.config_yaml))
     elif body.config_path:
-        config_path = Path(body.config_path)
-        if not config_path.is_absolute():
-            config_path = ROOT / config_path
+        try:
+            config_path = _resolve_under_root(Path(body.config_path), status=400)
+        except HTTPException:
+            raise
+        except (OSError, ValueError) as e:
+            raise HTTPException(400, "Invalid config_path") from e
         config = BenchmarkConfig.from_yaml(config_path)
     else:
         raise HTTPException(400, "config_yaml or config_path required")
@@ -239,11 +242,11 @@ async def run_events(run_id: str):
     return EventSourceResponse(event_generator())
 
 
-def _resolve_under_root(path: Path) -> Path:
+def _resolve_under_root(path: Path, *, status: int = 404) -> Path:
     root = ROOT.resolve()
     resolved = path.resolve() if path.is_absolute() else (root / path).resolve()
     if not resolved.is_relative_to(root):
-        raise HTTPException(404, "Image not found")
+        raise HTTPException(status, "Path not allowed")
     return resolved
 
 
