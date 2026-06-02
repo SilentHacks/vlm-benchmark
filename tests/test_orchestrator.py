@@ -50,6 +50,8 @@ async def test_golden_run(tmp_path):
     stats = by_model["mock:deterministic"]
     assert stats["total"] == 3
     assert stats["primary_score"] == 1.0
+    assert stats["reliability"]["confidence_count"] == 3
+    assert stats["efficiency"]["cost_per_correct_usd"] is not None
 
 
 @pytest.mark.asyncio

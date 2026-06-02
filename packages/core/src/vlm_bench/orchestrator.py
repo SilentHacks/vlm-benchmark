@@ -22,6 +22,7 @@ from vlm_bench.metrics.engine import MetricEngine
 from vlm_bench.pricing import CostLatencyTracker, PricingTable
 from vlm_bench.storage.db import init_db, session_scope
 from vlm_bench.paths import resolve_paths
+from vlm_bench.reliability import enrich_model_aggregates
 from vlm_bench.run_service import begin_run, finalize_run
 from vlm_bench.storage.models import InferenceRecord, MetricResult, Run
 
@@ -193,6 +194,7 @@ class BenchmarkOrchestrator:
                 "image_id": row.image_id,
                 "score": metric_score.score,
                 "passed": metric_score.passed,
+                "confidence": metric_score.details.get("confidence"),
                 "latency_ms": result.latency_ms,
                 "cost_usd": result.cost_usd,
                 "error": result.error,
@@ -273,6 +275,17 @@ class BenchmarkOrchestrator:
             scores_by_model=scores_by_model,
         )
         aggregates = merge_tracker_summary(aggregates, tracker.summary())
+        reliability_rows_by_model: dict[str, list[dict[str, Any]]] = {}
+        for rec in metric_records:
+            reliability_rows_by_model.setdefault(rec["model_id"], []).append(
+                {
+                    "confidence": rec.get("confidence"),
+                    "passed": rec.get("passed"),
+                    "cost_usd": rec.get("cost_usd"),
+                    "latency_ms": rec.get("latency_ms"),
+                }
+            )
+        aggregates = enrich_model_aggregates(aggregates, reliability_rows_by_model)
         async with db_lock:
             finalize_run(
                 session,
