@@ -160,7 +160,7 @@ def render_html_report(run_id: str, db_path: str | Path) -> str:
                 "cost": agg.get("cost_usd", 0),
                 "cost_per_correct": f"${cpc:.4f}" if cpc is not None else "—",
                 "ece": f"{ece:.4f}" if ece is not None else "—",
-                "p50_ms": f"{lat.get('p50', 0):.0f}",
+                "p50_ms": f"{lat['p50']:.0f}" if lat.get("p50") is not None else "—",
                 "errors": agg.get("errors", 0),
             }
         )
