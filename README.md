@@ -12,9 +12,10 @@ Works out of the box with a **mock adapter** (no API keys). Swap in OpenAI, Goog
 - **Pluggable metrics** — classification, exact match, JSON field match, regex, keywords, JSON Schema, custom Python plugins (CLI only)
 - **Async orchestration** — configurable concurrency, retries, inference cache
 - **Cost & latency** — per-model aggregates with pricing from `configs/pricing.yaml`
-- **CLI** — validate, run, inspect results, export HTML reports
-- **REST API + SSE** — start runs, stream progress, fetch results
-- **React dashboard** — wizard, live run view, leaderboard, per-image comparison
+- **Run comparison** — diff two completed runs (CLI, API, dashboard) with regression/improvement breakdown
+- **CLI** — validate, run, inspect results, compare runs, export HTML reports
+- **REST API + SSE** — start runs, stream progress, fetch results, compare runs
+- **React dashboard** — wizard, live run view, leaderboard, cost-accuracy Pareto chart, per-image comparison, run diff
 
 ## Requirements
 
@@ -41,6 +42,10 @@ uv run vlm-bench results <RUN_ID> --format table
 
 # Export HTML report
 uv run vlm-bench export <RUN_ID> --out report.html --format html
+
+# Compare two runs (baseline vs candidate)
+uv run vlm-bench compare <BASELINE_RUN_ID> <CANDIDATE_RUN_ID> --format table
+uv run vlm-bench compare <BASELINE_RUN_ID> <CANDIDATE_RUN_ID> --format html --out compare.html
 ```
 
 ## Live model providers
@@ -67,6 +72,9 @@ cd packages/web && npm ci && npm run dev
 ```
 
 Open http://localhost:5173
+
+- **Results** — leaderboard, score bar chart, cost-vs-accuracy Pareto scatter, per-image grid
+- **Compare** — pick baseline and candidate runs to see score/cost deltas, regressions, and a dual-run Pareto chart (`/compare?baseline=<id>&candidate=<id>`)
 
 ## Docker
 
