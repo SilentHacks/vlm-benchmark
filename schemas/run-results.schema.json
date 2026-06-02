@@ -19,7 +19,9 @@
             }
           },
           "cost_usd": { "type": "number" },
-          "errors": { "type": "integer" }
+          "errors": { "type": "integer" },
+          "reliability": { "type": "object" },
+          "efficiency": { "type": "object" }
         }
       }
     }

@@ -31,7 +31,15 @@
       "required": ["type"],
       "properties": {
         "type": { "type": "string" },
-        "aggregate": { "type": "string" }
+        "aggregate": { "type": "string" },
+        "confidence": {
+          "type": "object",
+          "properties": {
+            "mode": { "type": "string", "enum": ["json"] },
+            "path": { "type": "string" },
+            "scale": { "type": "string", "enum": ["unit", "percent"] }
+          }
+        }
       }
     },
     "execution": { "type": "object" },
