@@ -14,6 +14,43 @@ export interface RunDetail extends Run {
   aggregates: { by_model?: Record<string, ModelStats> }
 }
 
+export interface CalibrationBin {
+  bin_low: number
+  bin_high: number
+  count: number
+  mean_confidence: number
+  accuracy: number
+  gap: number
+}
+
+export interface SelectivePoint {
+  threshold: number
+  coverage: number
+  accuracy: number | null
+  mean_cost_usd: number | null
+  mean_latency_ms: number | null
+  approved_count: number
+}
+
+export interface ReliabilityStats {
+  sample_count: number
+  confidence_count: number
+  confidence_available: boolean
+  ece: number | null
+  mce: number | null
+  bins: CalibrationBin[]
+  selective: SelectivePoint[]
+  note: string | null
+}
+
+export interface EfficiencyStats {
+  cost_per_correct_usd: number | null
+  cost_per_inference_usd: number | null
+  score_per_usd: number | null
+  throughput_p50_ips: number | null
+  latency_ms_per_correct_p50: number | null
+}
+
 export interface ModelStats {
   primary_score: number
   correct: number
@@ -21,6 +58,8 @@ export interface ModelStats {
   latency_ms: { p50: number; p95: number; mean: number }
   cost_usd: number
   errors: number
+  reliability?: ReliabilityStats
+  efficiency?: EfficiencyStats
 }
 
 export interface MetricRow {

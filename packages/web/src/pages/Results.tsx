@@ -4,6 +4,8 @@ import {
   Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
 import CostAccuracyChart, { modelStatsToSeries } from '../components/CostAccuracyChart'
+import FrontierChart, { modelStatsToLatencySeries } from '../components/FrontierChart'
+import ReliabilityPanel from '../components/ReliabilityPanel'
 import { fetchRunResults, MetricRow, ModelStats, thumbnailUrl } from '../api'
 
 export default function Results() {
@@ -93,6 +95,15 @@ export default function Results() {
         title="Cost vs Accuracy"
         series={[modelStatsToSeries(byModel, 'Models', '#38bdf8')]}
       />
+
+      <FrontierChart
+        title="Latency (P50) vs Accuracy"
+        xLabel="P50 latency (ms)"
+        xTickFormat={(v) => `${v.toFixed(0)} ms`}
+        series={[modelStatsToLatencySeries(byModel, 'Models', '#a78bfa')]}
+      />
+
+      <ReliabilityPanel byModel={byModel} />
 
       <div className="card">
         <h2>Per-Image Comparison</h2>
