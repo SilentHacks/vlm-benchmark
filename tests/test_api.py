@@ -144,3 +144,44 @@ def test_validate_config(api_client):
     assert resp.status_code == 200
     data = resp.json()
     assert "valid" in data
+
+
+def test_compare_runs_endpoint(api_client):
+    run_a = api_client.post("/runs", json={"config_path": CONFIG_PATH})
+    assert run_a.status_code == 200
+    baseline_id = run_a.json()["run_id"]
+
+    deadline = time.time() + 30
+    while time.time() < deadline:
+        if api_client.get(f"/runs/{baseline_id}").json()["status"] == "completed":
+            break
+        time.sleep(0.2)
+
+    run_b = api_client.post("/runs", json={"config_path": CONFIG_PATH})
+    assert run_b.status_code == 200
+    candidate_id = run_b.json()["run_id"]
+
+    while time.time() < deadline:
+        if api_client.get(f"/runs/{candidate_id}").json()["status"] == "completed":
+            break
+        time.sleep(0.2)
+
+    resp = api_client.get(
+        "/runs/compare",
+        params={"baseline": baseline_id, "candidate": candidate_id},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["baseline"]["run_id"] == baseline_id
+    assert body["candidate"]["run_id"] == candidate_id
+    assert "counts" in body
+    assert "summary_by_model" in body
+    assert body["counts"]["unchanged"] == 3
+
+
+def test_compare_same_run_rejected(api_client):
+    resp = api_client.get(
+        "/runs/compare",
+        params={"baseline": "abc", "candidate": "abc"},
+    )
+    assert resp.status_code == 400

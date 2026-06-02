@@ -15,10 +15,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from vlm_bench_api.schemas import RunDetail, RunResults, ValidateRequest, ValidateResponse
+from vlm_bench_api.schemas import (
+    RunCompareResponse,
+    RunDetail,
+    RunResults,
+    ValidateRequest,
+    ValidateResponse,
+)
 from sse_starlette.sse import EventSourceResponse
 
 from vlm_bench.config import BenchmarkConfig
+from vlm_bench.compare import compare_runs
 from vlm_bench.paths import resolve_paths
 from vlm_bench.run_service import create_pending_run
 from vlm_bench.orchestrator import BenchmarkOrchestrator
@@ -122,6 +129,26 @@ def list_runs(limit: int = 20) -> list[dict]:
     with session_scope(DB_PATH) as session:
         runs = session.query(Run).order_by(Run.created_at.desc()).limit(limit).all()
         return [run_to_dict(r) for r in runs]
+
+
+@app.get("/runs/compare", response_model=RunCompareResponse)
+def compare_run_pair(
+    baseline: str,
+    candidate: str,
+    strict_name: bool = True,
+) -> RunCompareResponse:
+    try:
+        payload = compare_runs(
+            DB_PATH,
+            baseline,
+            candidate,
+            strict_name=strict_name,
+        )
+    except KeyError as e:
+        raise HTTPException(404, str(e)) from e
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    return RunCompareResponse.model_validate(payload)
 
 
 @app.get("/runs/{run_id}/results", response_model=RunResults)

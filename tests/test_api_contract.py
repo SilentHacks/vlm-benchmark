@@ -56,5 +56,11 @@ def test_contract_routes_exist(api_client):
     assert results.status_code == 200
     assert "metrics" in results.json()
 
+    compare = api_client.get(
+        "/runs/compare",
+        params={"baseline": run_id, "candidate": run_id},
+    )
+    assert compare.status_code == 400
+
     assert api_client.get(f"/runs/{run_id}/events").status_code == 200
     assert api_client.get("/thumbnails/fixtures/images/img_001.png").status_code == 200
