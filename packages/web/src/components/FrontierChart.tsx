@@ -114,11 +114,13 @@ export function modelStatsToLatencySeries(
   return {
     name,
     color,
-    points: Object.entries(byModel).map(([model, stats]) => ({
-      model: model.split(':').pop() || model,
-      fullModel: model,
-      x: stats.latency_ms?.p50 ?? 0,
-      score: stats.primary_score ?? 0,
-    })),
+    points: Object.entries(byModel)
+      .filter(([, stats]) => stats.latency_ms?.p50 != null && stats.latency_ms.p50 > 0)
+      .map(([model, stats]) => ({
+        model: model.split(':').pop() || model,
+        fullModel: model,
+        x: stats.latency_ms!.p50,
+        score: stats.primary_score ?? 0,
+      })),
   }
 }
