@@ -56,6 +56,12 @@ th { font-weight: 600; color: #64748b; font-size: 0.875rem; }
 }
 .btn:hover { background: #2563eb; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-secondary {
+  background: #64748b;
+  font-size: 0.875rem;
+  padding: 0.375rem 0.75rem;
+}
+.btn-secondary:hover { background: #475569; }
 
 .pass { color: #16a34a; font-weight: 600; }
 .fail { color: #dc2626; font-weight: 600; }
@@ -120,3 +126,48 @@ th { font-weight: 600; color: #64748b; font-size: 0.875rem; }
 }
 
 .error { color: #dc2626; font-size: 0.875rem; margin-top: 0.5rem; }
+
+.chart-container { min-height: 280px; }
+.best { font-weight: 700; color: #16a34a; }
+.delta-pos { color: #16a34a; font-weight: 600; }
+.delta-neg { color: #dc2626; font-weight: 600; }
+.compare-selectors {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.compare-selectors .form-group { flex: 1; min-width: 200px; margin-bottom: 0; }
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+.modal {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  max-width: 480px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.modal-img {
+  width: 100%;
+  border-radius: 8px;
+  margin: 1rem 0;
+}
+.modal-model {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+.model-row { font-size: 0.875rem; margin-top: 0.25rem; }
+.grid-item { cursor: pointer; }
+.grid-item:hover { border-color: #3b82f6; }

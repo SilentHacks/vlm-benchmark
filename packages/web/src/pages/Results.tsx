@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import {
   Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
+import CostAccuracyChart, { modelStatsToSeries } from '../components/CostAccuracyChart'
 import { fetchRunResults, MetricRow, ModelStats, thumbnailUrl } from '../api'
 
 export default function Results() {
@@ -34,6 +35,15 @@ export default function Results() {
 
   return (
     <div>
+      <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h2 style={{ marginBottom: 0 }}>Results</h2>
+        {id && (
+          <Link to={`/compare?baseline=${id}`} className="btn btn-secondary">
+            Compare with...
+          </Link>
+        )}
+      </div>
+
       <div className="card">
         <h2>Leaderboard</h2>
         <table>
@@ -78,6 +88,11 @@ export default function Results() {
           </ResponsiveContainer>
         </div>
       )}
+
+      <CostAccuracyChart
+        title="Cost vs Accuracy"
+        series={[modelStatsToSeries(byModel, 'Models', '#38bdf8')]}
+      />
 
       <div className="card">
         <h2>Per-Image Comparison</h2>
