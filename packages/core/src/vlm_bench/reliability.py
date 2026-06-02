@@ -5,10 +5,6 @@ from __future__ import annotations
 from typing import Any
 
 
-def _clamp01(value: float) -> float:
-    return max(0.0, min(1.0, value))
-
-
 def calibration_bins(
     rows: list[dict[str, Any]],
     *,
