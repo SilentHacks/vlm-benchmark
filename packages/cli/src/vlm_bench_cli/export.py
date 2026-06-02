@@ -30,13 +30,16 @@ REPORT_TEMPLATE = """<!DOCTYPE html>
   <p>Run ID: <code>{{ run_id }}</code> | Status: {{ status }}</p>
   <h2>Leaderboard</h2>
   <table>
-    <tr><th>Model</th><th>Score</th><th>Correct/Total</th><th>Cost USD</th><th>Errors</th></tr>
+    <tr><th>Model</th><th>Score</th><th>Correct/Total</th><th>Cost USD</th><th>$/correct</th><th>ECE</th><th>P50 ms</th><th>Errors</th></tr>
     {% for row in leaderboard %}
     <tr>
       <td>{{ row.model_id }}</td>
       <td>{{ "%.4f"|format(row.score) }}</td>
       <td>{{ row.correct }}/{{ row.total }}</td>
       <td>${{ "%.4f"|format(row.cost) }}</td>
+      <td>{{ row.cost_per_correct }}</td>
+      <td>{{ row.ece }}</td>
+      <td>{{ row.p50_ms }}</td>
       <td>{{ row.errors }}</td>
     </tr>
     {% endfor %}
@@ -143,6 +146,11 @@ def render_html_report(run_id: str, db_path: str | Path) -> str:
 
     leaderboard = []
     for model_id, agg in by_model.items():
+        eff = agg.get("efficiency") or {}
+        rel = agg.get("reliability") or {}
+        lat = agg.get("latency_ms") or {}
+        cpc = eff.get("cost_per_correct_usd")
+        ece = rel.get("ece")
         leaderboard.append(
             {
                 "model_id": model_id,
@@ -150,6 +158,9 @@ def render_html_report(run_id: str, db_path: str | Path) -> str:
                 "correct": agg.get("correct", 0),
                 "total": agg.get("total", 0),
                 "cost": agg.get("cost_usd", 0),
+                "cost_per_correct": f"${cpc:.4f}" if cpc is not None else "—",
+                "ece": f"{ece:.4f}" if ece is not None else "—",
+                "p50_ms": f"{lat.get('p50', 0):.0f}",
                 "errors": agg.get("errors", 0),
             }
         )

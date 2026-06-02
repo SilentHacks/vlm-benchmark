@@ -155,20 +155,38 @@ def results(
     table.add_column("Correct/Total")
     table.add_column("P50 ms")
     table.add_column("Cost USD")
+    table.add_column("$/correct")
+    table.add_column("ECE")
     table.add_column("Errors")
     for model_id, agg in sorted(
         aggregates.items(), key=lambda x: x[1].get("primary_score", 0), reverse=True
     ):
         lat = agg.get("latency_ms", {})
+        eff = agg.get("efficiency") or {}
+        rel = agg.get("reliability") or {}
+        ece = rel.get("ece")
         table.add_row(
             model_id,
             f"{agg.get('primary_score', 0):.4f}",
             f"{agg.get('correct', 0)}/{agg.get('total', 0)}",
             f"{lat.get('p50', 0):.0f}",
             f"{agg.get('cost_usd', 0):.4f}",
+            _format_optional_float(eff.get("cost_per_correct_usd"), precision=4, prefix="$"),
+            f"{ece:.4f}" if ece is not None else "—",
             str(agg.get("errors", 0)),
         )
     console.print(table)
+
+
+def _format_optional_float(
+    value: float | None,
+    *,
+    precision: int = 4,
+    prefix: str = "",
+) -> str:
+    if value is None:
+        return "—"
+    return f"{prefix}{value:.{precision}f}"
 
 
 @app.command()
