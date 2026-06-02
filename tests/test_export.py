@@ -7,7 +7,7 @@ import pytest
 from vlm_bench.config import BenchmarkConfig
 from vlm_bench.orchestrator import BenchmarkOrchestrator
 from vlm_bench.storage.db import init_db, session_scope
-from vlm_bench_cli.export import render_html_report
+from vlm_bench_cli.export import render_compare_html_report, render_html_report
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG_PATH = ROOT / "configs" / "example-bench.yaml"
@@ -30,5 +30,27 @@ async def test_html_export_autoescapes(tmp_path):
         result = await orch.run()
 
     html = render_html_report(result["run_id"], db)
+    assert "<script>" not in html
+    assert "&lt;script&gt;" in html
+
+
+@pytest.mark.asyncio
+async def test_compare_html_export_autoescapes(tmp_path):
+    db = tmp_path / "bench.db"
+    init_db(db)
+    cfg = BenchmarkConfig.from_yaml(CONFIG_PATH)
+    cfg.name = "<script>alert('xss')</script>"
+
+    with session_scope(db) as session:
+        orch = BenchmarkOrchestrator(
+            cfg,
+            config_path=CONFIG_PATH,
+            db_session=session,
+            project_root=ROOT,
+        )
+        result_a = await orch.run()
+        result_b = await orch.run()
+
+    html = render_compare_html_report(result_a["run_id"], result_b["run_id"], db)
     assert "<script>" not in html
     assert "&lt;script&gt;" in html

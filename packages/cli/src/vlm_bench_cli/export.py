@@ -7,6 +7,7 @@ from pathlib import Path
 
 from jinja2 import Environment, Template
 
+from vlm_bench.compare import compare_runs
 from vlm_bench.results import load_run_results
 
 REPORT_TEMPLATE = """<!DOCTYPE html>
@@ -56,6 +57,83 @@ REPORT_TEMPLATE = """<!DOCTYPE html>
 </html>
 """
 
+COMPARE_TEMPLATE = """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>VLM Benchmark Compare — {{ baseline_id }} vs {{ candidate_id }}</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem; background: #0f1117; color: #e4e4e7; }
+    table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+    th, td { border: 1px solid #333; padding: 0.5rem 1rem; text-align: left; }
+    th { background: #1e2130; }
+    .pass { color: #4ade80; }
+    .fail { color: #f87171; }
+    .improved { color: #4ade80; }
+    .regressed { color: #f87171; }
+    h1 { color: #a78bfa; }
+    .warn { color: #fbbf24; }
+  </style>
+</head>
+<body>
+  <h1>Run Comparison</h1>
+  <p>Baseline: <code>{{ baseline_id }}</code> ({{ baseline_name }})</p>
+  <p>Candidate: <code>{{ candidate_id }}</code> ({{ candidate_name }})</p>
+  {% for w in warnings %}
+  <p class="warn">Warning: {{ w }}</p>
+  {% endfor %}
+
+  <h2>Model Summary</h2>
+  <table>
+    <tr>
+      <th>Model</th><th>Baseline Score</th><th>Candidate Score</th><th>Delta</th>
+      <th>Baseline Cost</th><th>Candidate Cost</th><th>Cost Delta</th>
+      <th>Improved</th><th>Regressed</th>
+    </tr>
+    {% for row in summary %}
+    <tr>
+      <td>{{ row.model_id }}</td>
+      <td>{{ "%.4f"|format(row.baseline_score) }}</td>
+      <td>{{ "%.4f"|format(row.candidate_score) }}</td>
+      <td>{{ "%+.4f"|format(row.score_delta) }}</td>
+      <td>${{ "%.4f"|format(row.baseline_cost) }}</td>
+      <td>${{ "%.4f"|format(row.candidate_cost) }}</td>
+      <td>${{ "%+.4f"|format(row.cost_delta) }}</td>
+      <td>{{ row.improvements }}</td>
+      <td>{{ row.regressions }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  <h2>Regressions</h2>
+  <table>
+    <tr><th>Image</th><th>Model</th><th>Baseline</th><th>Candidate</th></tr>
+    {% for row in regressions %}
+    <tr>
+      <td>{{ row.image_id }}</td>
+      <td>{{ row.model_id }}</td>
+      <td class="pass">PASS</td>
+      <td class="fail">FAIL</td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  <h2>Improvements</h2>
+  <table>
+    <tr><th>Image</th><th>Model</th><th>Baseline</th><th>Candidate</th></tr>
+    {% for row in improvements %}
+    <tr>
+      <td>{{ row.image_id }}</td>
+      <td>{{ row.model_id }}</td>
+      <td class="fail">FAIL</td>
+      <td class="pass">PASS</td>
+    </tr>
+    {% endfor %}
+  </table>
+</body>
+</html>
+"""
+
 
 def render_html_report(run_id: str, db_path: str | Path) -> str:
     dto = load_run_results(db_path, run_id)
@@ -93,4 +171,34 @@ def render_html_report(run_id: str, db_path: str | Path) -> str:
             }
             for m in metrics
         ],
+    )
+
+
+def render_compare_html_report(
+    baseline_id: str,
+    candidate_id: str,
+    db_path: str | Path,
+    *,
+    strict_name: bool = True,
+) -> str:
+    payload = compare_runs(
+        db_path,
+        baseline_id,
+        candidate_id,
+        strict_name=strict_name,
+    )
+    regressions = [r for r in payload["rows"] if r["change"] == "regressed"][:50]
+    improvements = [r for r in payload["rows"] if r["change"] == "improved"][:50]
+
+    env = Environment(autoescape=True)
+    tmpl = env.from_string(COMPARE_TEMPLATE)
+    return tmpl.render(
+        baseline_id=baseline_id,
+        candidate_id=candidate_id,
+        baseline_name=payload["baseline"]["name"],
+        candidate_name=payload["candidate"]["name"],
+        warnings=payload["warnings"],
+        summary=payload["summary_by_model"],
+        regressions=regressions,
+        improvements=improvements,
     )

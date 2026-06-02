@@ -187,5 +187,90 @@ def export(
     console.print(f"[green]✓[/green] Exported to {out}")
 
 
+@app.command()
+def compare(
+    baseline: str = typer.Argument(..., help="Baseline run ID"),
+    candidate: str = typer.Argument(..., help="Candidate run ID"),
+    format: str = typer.Option("table", "--format", "-f", help="table|json|html"),
+    out: Path | None = typer.Option(None, "--out", "-o", help="Output HTML path (format=html)"),
+    db: Path = typer.Option(Path("data/vlm_bench.db"), "--db"),
+    strict_name: bool = typer.Option(True, "--strict-name/--no-strict-name"),
+) -> None:
+    """Compare two completed runs."""
+    from vlm_bench.compare import compare_runs
+
+    init_db(db)
+    try:
+        payload = compare_runs(db, baseline, candidate, strict_name=strict_name)
+    except KeyError as e:
+        console.print(f"[red]{e}[/red]")
+        raise typer.Exit(1) from e
+    except ValueError as e:
+        console.print(f"[red]{e}[/red]")
+        raise typer.Exit(1) from e
+
+    if format == "json":
+        console.print(json.dumps(payload, indent=2))
+        return
+
+    if format == "html":
+        from vlm_bench_cli.export import render_compare_html_report
+
+        html = render_compare_html_report(
+            baseline, candidate, db, strict_name=strict_name
+        )
+        dest = out or Path(f"compare-{baseline}-vs-{candidate}.html")
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(html)
+        console.print(f"[green]✓[/green] Exported to {dest}")
+        return
+
+    console.print(
+        f"Baseline: [cyan]{baseline}[/cyan] ({payload['baseline']['name']}) | "
+        f"Candidate: [cyan]{candidate}[/cyan] ({payload['candidate']['name']})"
+    )
+    for w in payload["warnings"]:
+        console.print(f"[yellow]Warning:[/yellow] {w}")
+
+    counts = payload["counts"]
+    console.print(
+        f"Changes: {counts['improved']} improved, {counts['regressed']} regressed, "
+        f"{counts['unchanged']} unchanged"
+    )
+
+    table = Table(title="Model Summary")
+    table.add_column("Model")
+    table.add_column("Baseline")
+    table.add_column("Candidate")
+    table.add_column("Delta")
+    table.add_column("Cost Δ")
+    table.add_column("↑")
+    table.add_column("↓")
+    for row in payload["summary_by_model"]:
+        delta_style = "green" if row["score_delta"] > 0 else ("red" if row["score_delta"] < 0 else "")
+        table.add_row(
+            row["model_id"],
+            f"{row['baseline_score']:.4f}",
+            f"{row['candidate_score']:.4f}",
+            f"[{delta_style}]{row['score_delta']:+.4f}[/{delta_style}]" if delta_style else f"{row['score_delta']:+.4f}",
+            f"${row['cost_delta']:+.4f}",
+            str(row["improvements"]),
+            str(row["regressions"]),
+        )
+    console.print(table)
+
+    regressions = [r for r in payload["rows"] if r["change"] == "regressed"][:20]
+    if regressions:
+        console.print("\n[red]Top regressions:[/red]")
+        for r in regressions:
+            console.print(f"  {r['image_id']} @ {r['model_id']}")
+
+    improvements = [r for r in payload["rows"] if r["change"] == "improved"][:20]
+    if improvements:
+        console.print("\n[green]Top improvements:[/green]")
+        for r in improvements:
+            console.print(f"  {r['image_id']} @ {r['model_id']}")
+
+
 if __name__ == "__main__":
     app()
