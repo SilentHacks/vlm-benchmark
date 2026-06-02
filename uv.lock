@@ -1298,7 +1298,7 @@ wheels = [
 
 [[package]]
 name = "vlm-bench-api"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/api" }
 dependencies = [
     { name = "fastapi" },
@@ -1319,7 +1319,7 @@ requires-dist = [
 
 [[package]]
 name = "vlm-bench-cli"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/cli" }
 dependencies = [
     { name = "jinja2" },
@@ -1338,7 +1338,7 @@ requires-dist = [
 
 [[package]]
 name = "vlm-bench-core"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/core" }
 dependencies = [
     { name = "httpx" },
@@ -1367,7 +1367,7 @@ requires-dist = [
 
 [[package]]
 name = "vlm-benchmark"
-version = "0.1.0"
+version = "0.2.0"
 source = { virtual = "." }
 
 [package.dev-dependencies]

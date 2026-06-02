@@ -5,7 +5,7 @@ from vlm_bench.dataset import load_manifest
 from vlm_bench.orchestrator import BenchmarkOrchestrator
 from vlm_bench.validation import validate_config
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "__version__",
