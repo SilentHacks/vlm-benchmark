@@ -4,6 +4,8 @@ import {
   Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
 import CostAccuracyChart, { modelStatsToSeries } from '../components/CostAccuracyChart'
+import FrontierChart, { modelStatsToLatencySeries } from '../components/FrontierChart'
+import ReliabilityPanel from '../components/ReliabilityPanel'
 import { fetchRunResults, MetricRow, ModelStats, thumbnailUrl } from '../api'
 
 export default function Results() {
@@ -55,6 +57,8 @@ export default function Results() {
               <th>Correct/Total</th>
               <th>P50 Latency</th>
               <th>Cost USD</th>
+              <th>$/correct</th>
+              <th>ECE</th>
               <th>Errors</th>
             </tr>
           </thead>
@@ -67,6 +71,8 @@ export default function Results() {
                 <td>{stats.correct}/{stats.total}</td>
                 <td>{stats.latency_ms?.p50?.toFixed(0) ?? '—'} ms</td>
                 <td>${stats.cost_usd?.toFixed(4) ?? '0.0000'}</td>
+                <td>{formatUsd(stats.efficiency?.cost_per_correct_usd)}</td>
+                <td>{stats.reliability?.ece != null ? stats.reliability.ece.toFixed(4) : '—'}</td>
                 <td>{stats.errors ?? 0}</td>
               </tr>
             ))}
@@ -93,6 +99,15 @@ export default function Results() {
         title="Cost vs Accuracy"
         series={[modelStatsToSeries(byModel, 'Models', '#38bdf8')]}
       />
+
+      <FrontierChart
+        title="Latency (P50) vs Accuracy"
+        xLabel="P50 latency (ms)"
+        xTickFormat={(v) => `${v.toFixed(0)} ms`}
+        series={[modelStatsToLatencySeries(byModel, 'Models', '#a78bfa')]}
+      />
+
+      <ReliabilityPanel byModel={byModel} />
 
       <div className="card">
         <h2>Per-Image Comparison</h2>
@@ -146,6 +161,11 @@ export default function Results() {
       )}
     </div>
   )
+}
+
+function formatUsd(value: number | null | undefined): string {
+  if (value == null) return '—'
+  return `$${value.toFixed(4)}`
 }
 
 function groupByImage(metrics: MetricRow[]): [string, MetricRow[]][] {

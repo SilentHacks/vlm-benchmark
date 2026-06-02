@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from vlm_bench.config import MetricConfig
 from vlm_bench.metrics.base import MetricScore, ScoreContext
-from vlm_bench.metrics.parse import normalize, parse_response
+from vlm_bench.metrics.parse import normalize, parse_confidence, parse_response
 
 
 class LabelMatchMetric:
@@ -24,10 +24,14 @@ class LabelMatchMetric:
             expected = expected_raw
             parsed = parsed_raw
         match = expected == parsed
+        details: dict = {"expected": expected, "actual": parsed}
+        confidence = parse_confidence(ctx.response, self.config.confidence)
+        if confidence is not None:
+            details["confidence"] = confidence
         return MetricScore(
             score=1.0 if match else 0.0,
             passed=match,
-            details={"expected": expected, "actual": parsed},
+            details=details,
         )
 
     @staticmethod

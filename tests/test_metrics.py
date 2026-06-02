@@ -47,6 +47,51 @@ def test_classification_json_parse():
     assert r.passed
 
 
+def test_classification_confidence_in_details():
+    from vlm_bench.config import MetricConfidenceConfig
+
+    cfg = MetricConfig(
+        type="classification",
+        parse=MetricParseConfig(mode="json", path="$.label"),
+        confidence=MetricConfidenceConfig(path="$.confidence", scale="unit"),
+        labels_field="expected_class",
+    )
+    ctx = _ctx({"expected_class": "cat"})
+    ctx.response = json.dumps({"label": "cat", "confidence": 0.85})
+    r = ClassificationMetric(cfg).score(ctx)
+    assert r.details["confidence"] == 0.85
+
+
+def test_classification_confidence_percent_scale():
+    from vlm_bench.config import MetricConfidenceConfig
+
+    cfg = MetricConfig(
+        type="classification",
+        parse=MetricParseConfig(mode="json", path="$.label"),
+        confidence=MetricConfidenceConfig(scale="percent"),
+        labels_field="expected_class",
+    )
+    ctx = _ctx({"expected_class": "cat"})
+    ctx.response = json.dumps({"label": "cat", "confidence": 90})
+    r = ClassificationMetric(cfg).score(ctx)
+    assert r.details["confidence"] == 0.9
+
+
+def test_classification_confidence_rejects_non_finite():
+    from vlm_bench.config import MetricConfidenceConfig
+
+    cfg = MetricConfig(
+        type="classification",
+        parse=MetricParseConfig(mode="json", path="$.label"),
+        confidence=MetricConfidenceConfig(path="$.confidence", scale="unit"),
+        labels_field="expected_class",
+    )
+    ctx = _ctx({"expected_class": "cat"})
+    ctx.response = json.dumps({"label": "cat", "confidence": float("nan")})
+    r = ClassificationMetric(cfg).score(ctx)
+    assert "confidence" not in r.details
+
+
 def test_json_field_match():
     cfg = MetricConfig(
         type="json_field_match",

@@ -12,6 +12,9 @@ metric:
   parse:
     mode: json
     path: "$.label"
+  confidence:
+    path: "$.confidence"
+    scale: unit
   labels_field: expected_class
   aggregate: accuracy
 execution:

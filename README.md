@@ -12,6 +12,7 @@ Works out of the box with a **mock adapter** (no API keys). Swap in OpenAI, Goog
 - **Pluggable metrics** — classification, exact match, JSON field match, regex, keywords, JSON Schema, custom Python plugins (CLI only)
 - **Async orchestration** — configurable concurrency, retries, inference cache
 - **Cost & latency** — per-model aggregates with pricing from `configs/pricing.yaml`
+- **Reliability & efficiency** — calibration (ECE), selective prediction, cost-per-correct, latency frontiers when models report confidence ([docs](docs/RELIABILITY.md))
 - **Run comparison** — diff two completed runs (CLI, API, dashboard) with regression/improvement breakdown
 - **CLI** — validate, run, inspect results, compare runs, export HTML reports
 - **REST API + SSE** — start runs, stream progress, fetch results, compare runs
@@ -73,7 +74,7 @@ cd packages/web && npm ci && npm run dev
 
 Open http://localhost:5173
 
-- **Results** — leaderboard, score bar chart, cost-vs-accuracy Pareto scatter, per-image grid
+- **Results** — leaderboard, score bar chart, cost- and latency-vs-accuracy frontiers, calibration & selective prediction, per-image grid
 - **Compare** — pick baseline and candidate runs to see score/cost deltas, regressions, and a dual-run Pareto chart (`/compare?baseline=<id>&candidate=<id>`)
 
 ## Docker
@@ -112,6 +113,8 @@ vlm-benchmark/
 | `regex` | Pattern match |
 | `json_schema` | JSON Schema validation |
 | `custom_plugin` | Python module (CLI only) |
+
+Optional `metric.confidence` parses model-reported confidence for calibration and selective prediction. See [docs/RELIABILITY.md](docs/RELIABILITY.md).
 
 ## Configuration
 

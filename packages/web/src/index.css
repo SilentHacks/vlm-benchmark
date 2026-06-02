@@ -38,6 +38,16 @@ nav a:hover, nav a.active { color: #3b82f6; }
   margin-bottom: 1.5rem;
 }
 
+.muted {
+  color: #64748b;
+  font-size: 0.9rem;
+  margin-top: 0.25rem;
+}
+
+.chart-hint {
+  margin-bottom: 0.75rem;
+}
+
 .card h2 { font-size: 1.125rem; margin-bottom: 1rem; }
 
 table { width: 100%; border-collapse: collapse; }

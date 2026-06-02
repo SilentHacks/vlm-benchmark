@@ -19,6 +19,7 @@ const DEFAULT_CONFIG = {
   metric: {
     type: 'classification',
     parse: { mode: 'json', path: '$.label' },
+    confidence: { path: '$.confidence', scale: 'unit' },
     labels_field: 'expected_class',
     aggregate: 'accuracy',
   },

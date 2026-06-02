@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 from typing import Any
 
 from jsonpath_ng import parse as jsonpath_parse
 
-from vlm_bench.config import MetricParseConfig
+from vlm_bench.config import MetricConfidenceConfig, MetricParseConfig
 
 
 def parse_response(response: str, parse_cfg: MetricParseConfig | None) -> Any:
@@ -43,6 +44,27 @@ def parse_response(response: str, parse_cfg: MetricParseConfig | None) -> Any:
         return None
 
     return response.strip()
+
+
+def parse_confidence(
+    response: str,
+    confidence_cfg: MetricConfidenceConfig | None,
+) -> float | None:
+    """Extract a numeric confidence in [0, 1] from a model response, if configured."""
+    if confidence_cfg is None or confidence_cfg.mode != "json":
+        return None
+    raw = parse_response(response, MetricParseConfig(mode="json", path=confidence_cfg.path))
+    if raw is None:
+        return None
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        return None
+    if confidence_cfg.scale == "percent":
+        value = value / 100.0
+    if not math.isfinite(value) or value < 0.0 or value > 1.0:
+        return None
+    return value
 
 
 def normalize(value: Any) -> str:

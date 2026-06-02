@@ -35,9 +35,18 @@ class MetricFieldConfig(BaseModel):
 ParseConfig = MetricParseConfig
 
 
+class MetricConfidenceConfig(BaseModel):
+    """Optional model-reported confidence for calibration and selective prediction."""
+
+    mode: Literal["json"] = "json"
+    path: str = "$.confidence"
+    scale: Literal["unit", "percent"] = "unit"
+
+
 class MetricConfig(BaseModel):
     type: str
     parse: MetricParseConfig | None = None
+    confidence: MetricConfidenceConfig | None = None
     labels_field: str | None = None
     aggregate: str = "accuracy"
     fields: list[MetricFieldConfig | dict[str, Any]] = Field(default_factory=list)
