@@ -38,18 +38,19 @@ export default function ReliabilityPanel({ byModel }: ReliabilityPanelProps) {
       ) : (
         <>
           <CalibrationChart models={calibratedModels} />
-          {(() => {
-            const selectiveModel = calibratedModels[0]
-            const selective = selectiveModel[1].reliability?.selective ?? []
+          {calibratedModels.map(([modelId, stats], i) => {
+            const selective = stats.reliability?.selective ?? []
             if (selective.length === 0) return null
+            const label = modelId.split(':').pop() || modelId
             return (
               <SelectivePredictionChart
-                modelLabel={selectiveModel[0].split(':').pop() || selectiveModel[0]}
+                key={modelId}
+                modelLabel={label}
                 selective={selective}
-                color={MODEL_COLORS[0]}
+                color={MODEL_COLORS[i % MODEL_COLORS.length]}
               />
             )
-          })()}
+          })}
         </>
       )}
     </>
