@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 from typing import Any
 
@@ -61,7 +62,7 @@ def parse_confidence(
         return None
     if confidence_cfg.scale == "percent":
         value = value / 100.0
-    if value < 0.0 or value > 1.0:
+    if not math.isfinite(value) or value < 0.0 or value > 1.0:
         return None
     return value
 
