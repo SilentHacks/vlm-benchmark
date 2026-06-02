@@ -32,6 +32,50 @@ export interface MetricRow {
   details: Record<string, unknown>
 }
 
+export interface CompareSide {
+  score: number
+  passed: boolean
+}
+
+export interface CompareRow {
+  image_id: string
+  model_id: string
+  image_path: string
+  baseline: CompareSide | null
+  candidate: CompareSide | null
+  change: 'improved' | 'regressed' | 'unchanged' | 'baseline_only' | 'candidate_only'
+}
+
+export interface CompareModelSummary {
+  model_id: string
+  baseline_score: number
+  candidate_score: number
+  score_delta: number
+  baseline_cost: number
+  candidate_cost: number
+  cost_delta: number
+  baseline_errors: number
+  candidate_errors: number
+  improvements: number
+  regressions: number
+  unchanged: number
+}
+
+export interface CompareResult {
+  baseline: { run_id: string; name: string; status: string; created_at: string | null; finished_at: string | null }
+  candidate: { run_id: string; name: string; status: string; created_at: string | null; finished_at: string | null }
+  warnings: string[]
+  summary_by_model: CompareModelSummary[]
+  rows: CompareRow[]
+  counts: {
+    improved: number
+    regressed: number
+    unchanged: number
+    baseline_only: number
+    candidate_only: number
+  }
+}
+
 export async function fetchRuns(): Promise<Run[]> {
   const res = await fetch(`${API}/runs`)
   if (!res.ok) throw new Error('Failed to fetch runs')
@@ -76,4 +120,22 @@ export async function validateConfig(config: Record<string, unknown>): Promise<{
 
 export function thumbnailUrl(imagePath: string): string {
   return `${API}/thumbnails/${encodeURIComponent(imagePath)}`
+}
+
+export async function fetchCompareRuns(
+  baseline: string,
+  candidate: string,
+  strictName = true,
+): Promise<CompareResult> {
+  const params = new URLSearchParams({
+    baseline,
+    candidate,
+    strict_name: String(strictName),
+  })
+  const res = await fetch(`${API}/runs/compare?${params}`)
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(text || 'Failed to compare runs')
+  }
+  return res.json()
 }

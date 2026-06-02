@@ -56,7 +56,10 @@ export default function Home() {
       <div className="card">
         <h2>Quick Start</h2>
         <p>Compare vision-language models on your image datasets with pluggable metrics.</p>
-        <Link to="/wizard" className="btn" style={{ marginTop: '1rem' }}>New Benchmark</Link>
+        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
+          <Link to="/wizard" className="btn">New Benchmark</Link>
+          <Link to="/compare" className="btn btn-secondary">Compare Runs</Link>
+        </div>
       </div>
     </div>
   )
